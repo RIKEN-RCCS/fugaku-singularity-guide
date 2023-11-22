@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+
+<html lang="ja" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>5. ジョブスケジューラとの連携 &#8212; Singularity on FUGAKU  ドキュメント</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=c033477b"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=4dbe4bdc"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="検索" href="search.html" />
+    <link rel="prev" title="4. 実行時オプションと挙動" href="Execution.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="id1">
+<h1><span class="section-number">5. </span>ジョブスケジューラとの連携<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
+<p>既に見てきました通り、Singularity を用いたアプリケーションの実行にはコンテナであることを意識する必要があまりありません。特に %runscript を設定したイメージはそのままアプリケーションとして実行ができます。そのため、スケジューラを用いるジョブ実行に特別なことは不要です。他のコンテナ実装である Docker 等ではコンテナとホスト側で環境が分離され、コンテナの起動とその中でのアプリケーションの起動を別に考える必要があり、連携に困難が伴う事があります。</p>
+<p>また、実行時の処理や設定をイメージに埋め込むことができるということは、定型処理をジョブスクリプトやコマンドラインで記述せずに使えることを意味します。これによりスクリプトの記述ミスを防いだり、アプリを共有する際のサポートのし易さに貢献します。</p>
+<section id="id2">
+<h2><span class="section-number">5.1. </span>シンプルな実行<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<p>以下のように、環境を構築したイメージを指定し、コマンドを実行する記述をジョブスクリプトに記述してサブミットします。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat job.sh
+#!/bin/bash
+#PJM -L &quot;node=1&quot;
+#PJM -L &quot;rscunit=rscunit_ft01&quot;
+#PJM -L &quot;rscgrp=small&quot;
+#PJM -L &quot;jobenv=singularity&quot;
+#PJM -L &quot;elapse=15:00&quot;
+
+export OMP_NUM_THREADS=8
+export MYCODE_CONFIG=/usr/share/MyApps/config.json
+singularity exec ~/ubuntu2004.sif python3 ~/mycode/test.py
+
+$ pjsub ./job.sh
+</pre></div>
+</div>
+<p>この例では、自身のホームディレクトリにあるイメージを用いて Ubuntu 20.04 環境のイメージでコンテナを起動し、その中で python3 で、やはりホームディレクトリにある mycode/test.py を実行しています。</p>
+</section>
+<section id="id3">
+<h2><span class="section-number">5.2. </span>実行方法のイメージへの埋め込み<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<p>先述のイメージ作成で設定したように %environment や %runscript を設定して、多くの記述をイメージの中に取り込むことでジョブスクリプトをさらにシンプルにできます。例えば以下のような定義ファイルを用いて SIF イメージを作成したとします。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Bootstrap: docker
+From: ubuntu:focal
+
+%environment
+    export OMP_NUM_THEADS=8
+    export MYCODE_CONFIG=/usr/share/MyApps/hoge.json
+
+%runscript
+    cat $MYCODE_CONFIG
+    python3 /usr/share/MyApps/hoge.py $*
+</pre></div>
+</div>
+<p>作成した SIF イメージを、hoge というファイルネームにして PATH を通したディレクトリへ保存しておきます。Singularity は SIF イメージの作成時にはデフォルトで実行属性を付けますが、念のため確認してください。ジョブスクリプトは以下のようにできます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat job.sh
+#!/bin/bash
+#PJM -L &quot;node=1&quot;
+#PJM -L &quot;rscunit=rscunit_ft01&quot;
+#PJM -L &quot;rscgrp=small&quot;
+#PJM -L &quot;jobenv=singularity&quot;
+#PJM -L &quot;elapse=15:00&quot;
+
+hoge input.txt
+
+$ pjsub ./job.sh
+</pre></div>
+</div>
+<p>ここまでやると、ユーザーは Singularity を使っていることすら意識せず、直接アプリケーションを利用しているように感じるのではないでしょうか。</p>
+</section>
+<section id="id4">
+<h2><span class="section-number">5.3. </span>インタラクティブ実行<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
+<p>build のところで実施したように、インタラクティブジョブを実行すれば、その中でこれまで紹介してきた方法での操作が可能です。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00,jobenv=singularity&quot;
+[INFO] PJM 0000 pjsub Job XXXXXXX submitted.
+[INFO] PJM 0081 ..connected.
+[INFO] PJM 0082 pjsub Interactive job XXXXXXX started.
+[uXXXXX@b31-3208c ~]$ singularity shell ubuntu2004.sif
+Singularity&gt;
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Singularity on FUGAKU</a></h1>
+
+
+
+
+
+
+
+
+<h3>ナビゲーション</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. Singularity とは</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">2. Singularity 利用の手順</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">3. イメージの作成</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">4. 実行時オプションと挙動</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">5. ジョブスケジューラとの連携</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id2">5.1. シンプルな実行</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">5.2. 実行方法のイメージへの埋め込み</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">5.3. インタラクティブ実行</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="Execution.html" title="前の章へ"><span class="section-number">4. </span>実行時オプションと挙動</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">クイック検索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="検索" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021-, RIKEN R-CCS.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.2.6.
+    &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,280 @@
+実行時オプションと挙動
+########################
+
+ここでは、Singularity の実行時によく用いられるオプションや、いくつかの便利な挙動等について紹介します。
+
+ホスト側の環境の取り込み
+**************************
+
+環境変数の取り扱い
+==================
+
+これまでにホームディレクトリにあるファイルへのアクセスはデフォルトで有効であることを見てきました。環境変数についてはどうでしょうか。以下のようにしてコンテナ内の環境変数を表示させると、実行時のホスト側の変数が引き継がれていることが分かります。
+
+::
+
+    $ singularity exec ubuntu2004.sif env
+
+定義ファイルで %environment に記述した内容は、実際にはイメージの中でスクリプトとして転記され、コンテナ起動時に source される動作をします。そのため、ホスト側の変数を取り込んで操作したり、上書きすることが可能です。また、コンテナ実行前にホスト側で SINGULARITYENV_*** （\*\*\* は変数として使える任意の文字列）という変数を設定しておくと、\*\*\* という変数がコンテナ内で設定されるので、ホスト側の環境に干渉することなくコンテナ内での変数を事前に設定しておいたり、%environment で記述した内容をイメージを再作成することなく一時的に上書きするといったことが可能です。
+
+::
+
+    $ cat example.def
+    <<..snip..>>
+    %environment
+        export WORKFILE=/tmp/work_defined_in_env
+    %runscript
+        echo 'WORKFILE in Container' = ${WORKFILE}
+
+    $ cat job.sh
+    <<..snip..>>
+        export WORKFILE=/workdir/workfile
+        export SINGULARITYENV_WORKFILE=/workdir/work_defined_by_SINGULARITYENV
+        ~/example.sif
+        
+この場合の実行結果は以下のようになります。
+
+::
+
+        WORKFILE in Container = /workdir/work_defined_by_SINGULARITYENV
+
+        # without setting SINGULARITYENV
+        WORKFILE in Container = /tmp/work_defined_in_env
+
+        # without setting both of SINGULARITYENV and %environment
+        WORKFILE in Container = /workdir/workfile
+
+これにより、異なる環境においてもイメージの再作成をすることなく条件を変更したりすることが容易になっています。
+
+ディレクトリのバインド
+======================
+
+Singularity のコンテナを起動すると、デフォルトで自身のホームディレクトリ、/tmp, /var/tmp, /dev/, /proc, /sys 等をコンテナ内にバインドします。また、起動時のカレントディレクトリもバインドされますが、コンテナ内に同名のディレクトリが存在する場合に限られます。コンテナ内に存在しないディレクトリからイメージを起動すると、カレントディレクトリは当然、それ以外のディレクトリをコンテナ内からアクセスしたい場合があります。例えばホスト側で既にインストール済みのアプリケーションやデータが、イメージに取り込むには冗長・巨大であったり、ファイルを共有する他のユーザーのホームディレクトリを利用したい等です。
+
+この場合、起動時に -B オプションを用いて追加でバインドするディレクトリを指定できます。ホスト側のディレクトリとコンテナ内でのマウントポイントを : で区切って指定して、異なるパスを指定することもできますが、マウント先を省略すると同名のディレクトリにバインドされます。
+
+::
+
+    $ singularity exec ubuntu2004.sif -B /worktmp:/scratch ls -al /scratch
+
+これはコンテナ内で -bind オプションで再マウントされるのですが、ここにさらに : でマウントオプションを追加することができます。例えばコンテナ内ではリードオンリーにしたい場合、以下のように記述できます。
+
+::
+
+    $ singularity exec ubuntu2004.sif -B /system/reference:/opt/data:ro ls -al /opt/data
+
+また、複数のディレクトリを指定したい場合は、-B を列挙したり , で区切って指定することができます。
+
+バインドの動作には注意点がいくつかあります。デフォルトでカレントディレクトリがバインドされるので、例えば /usr/bin や /usr/lib 等のディレクトリからコンテナを起動すると、コンテナ内のそれらをホスト側のディレクトリで置き換えてしまい、結果としてランタイムエラーを起こすことがあります。また、他のユーザーのホームディレクトリから起動して自動でバインドしようとしても、コンテナ内にはそのディレクトリが存在しないため、バインドされません。明示的に -B オプションで指定する必要があります。
+
+インスタンス化とインタラクティブ処理
+************************************
+
+これまではコンテナの起動とアプリケーションの起動を統合し、ユーザーがコンテナを意識することなく直接アプリケーションを起動するように使ってきました。しかし、この使い方では起動したアプリケーションが終了するとコンテナも同時に終了してしまいます。もちろん再度起動し直せばよいのですが、軽量なコンテナ実装であっても何度も繰り返せばオーバーヘッド分が無駄になります。また、ウェブサーバーのようなサービス運用には Singularity は使えないのでしょうか？こうした利用法に対応するため、Singularity にはコンテナを維持できるインスタンス化という機能があります。
+
+以下のようにコンテナのみを起動しインスタンス化します。最後の文字列はインスタンス名で、既に起動しているものと被らない名前を付ける必要があります。list サブコマンドで正しく起動されていることを確認してください。
+
+::
+
+    $ singularity instance start ubuntu2004.sif Focal
+    $ singularity instance list
+    INSTANCE NAME    PID      IP    IMAGE
+    Focal            12016          /home/uXXXXX/ubuntu2004.sif
+
+これでイメージが展開されてマウントされ、すなわちコンテナが起動して待機している状態です。このインスタンス内でアプリケーションを実行するには、次のように、イメージ名の代わりにインスタンス名を指定します。
+
+::
+
+    $ singularity exec instance://Focal cat /etc/os-release
+
+1インスタンスに対して複数のアプリケーションを投入して実行することも可能です。例えばとあるディレクトリに存在する膨大な数のファイルに対して同一処理をするような場合、
+
+::
+
+    for data in data.*
+    do
+        singularity exec jammy.sif appl ${data}
+    done
+
+のような処理をするよりも、以下のようにする方が、一般的にはコンテナ起動のオーバーヘッドを削減でき、スループットを上げることができます。
+
+::
+
+    singularity instance start jammy jammy.sif
+    for data in data.*
+    do
+        singularity exec instance://jammy appl ${data}
+    done
+
+インスタンスは複数立ち上げておくことができるので、異なる環境での処理を1ジョブ内で行うことができます。一般的にはインスタンス機能はデータベースやウェブサーバー等、ノード内になんらかのサービスを起動させておく場合に利用されています。インスタンス起動時に自動的に行う処理を埋め込む場合、ビルド時の定義ファイルで %runscript の代わりに %startscript に記述します。
+
+インスタンスを止めるには stop オプションを使います。
+
+::
+
+    $ singularity instance stop Focal
+
+リポジトリを指定した直接実行
+****************************
+
+SIF イメージの作成時に Docker イメージを取得していたのを思い出してください。pull や build 時には、Docker イメージを構成するレイヤーファイル群は ~/.singularity 以下にキャッシュされます。このキャッシュの動作はターゲットに oras や library を指定した場合でも変わりません。そして Singularity はこれを直接実行できます。
+
+::
+
+    $ singularity exec docker://ubuntu:latest head -n 5 /etc/os-release
+    INFO:    Converting OCI blobs to SIF format
+    WARNING: 'nodev' mount option set on /worktmp, it could be a source of failure during build process
+    INFO:    Starting build...
+    Getting image source signatures
+    Copying blob a39c84e173f0 done
+    Copying config 4db8450a4d done
+    Writing manifest to image destination
+    Storing signatures
+    2021/03/21 12:14:15  info unpack layer: sha256:a39c84e173f038958d338f55a9e8ee64bb6643e8ac6ae98e08ca65146e668d86
+    2021/03/21 12:14:15  warn xattr{etc/gshadow} ignoring ENOTSUP on setxattr "user.rootlesscontainers"
+    2021/03/21 12:14:15  warn xattr{/worktmp/build-temp-063655636/rootfs/etc/gshadow} destination filesystem does not support xattrs, further warnings will be suppressed
+    INFO:    Creating SIF file...
+    NAME="Ubuntu"
+    VERSION="20.04.3 LTS (Focal Fossa)"
+    ID=ubuntu
+    ID_LIKE=debian
+    PRETTY_NAME="Ubuntu 20.04.3 LTS"
+
+メッセージを見るとわかる通り、内部的には SIF イメージ化をしていて ~/.singularity 以下に保存されています。再実行すると、リポジトリに更新がないかをチェックし、キャッシュを最大限利用して同期をとった上で実行します。更新がなければ、以下のようにキャッシュの SIF イメージを直接起動します。
+
+::
+
+    $ singularity exec docker://ubuntu:latest head -n 5 /etc/os-release
+    INFO:    Using cached SIF image
+    NAME="Ubuntu"
+    VERSION="20.04.3 LTS (Focal Fossa)"
+    ID=ubuntu
+    ID_LIKE=debian
+    PRETTY_NAME="Ubuntu 20.04.3 LTS"
+
+リポジトリ側に更新があればそれを取得して SIF イメージを再作成した上で実行します。そのため、動作実績のある実行環境を維持する必要がある場合には、この実行方法は向きません。常にリポジトリの最新版を取り込んで利用したい場合などに限定して利用されることをお勧めします。
+
+キャッシュの情報を見たり、クリアすることもできます。
+
+::
+
+    $ singularity cache list -v
+    NAME                     DATE CREATED           SIZE             TYPE
+    061be60b872e3a155a2364   2021-10-28 22:14:15    0.34 KiB         blob
+    2d5d59c100e7ad4ac35a22   2021-11-03 13:54:19    78.57 MiB        blob
+    <<中略>>
+    sha256.9a6ee1f8fdecb21   2023-02-22 17:14:02    2.65 MiB         library
+    626ffe58f6e7566e00254b   2021-10-28 22:14:18    25.15 MiB        oci-tmp
+
+    There are 2 container file(s) using 27.81 MiB and 25 oci blob file(s) using 692.86 MiB of space
+    Total space used: 720.67 MiB
+
+    $ singularity cache clean
+
+これらのキャッシュは、ここで触れている実行時だけでなく build/pull の際にも利用されます。
+
+Overlay 機能について
+********************
+
+SIF イメージの実体は SquashFS(tar+gzip)なので、実行時はリードオンリーとなります。しかし、一時的にファイルをイメージ内に置きたい場合や、部分的に異なっているだけのイメージが必要な時、全てを含んだイメージを複数持つのは無駄なので差分だけ持ちたいといったケースがあります。これには Linux カーネルの持つ OverlayFS という機能を使い、複数のファイルシステムを重ね合わせる事で実現します。Singularity には二つの方法が用意されています。
+
+#. 一時的な書き込み可能領域を使う --writable-tmpfs オプション。文字通りメモリ由来の tmpfs を重ね合わせます。
+#. 永続的な書き込み可能領域を別途用意して、実行時に重ねあわせる -—overlay オプション。
+
+writable-tmpfs オプションを使うと、tmpfs を既存イメージに重ね合わせるので、任意の場所に新たなファイルやディレクトリが作成できます。ただし、イメージ内に元からあるファイルはPermission denied で操作できません。また、変更点は tmpfs にのみ存在するため、コンテナ終了後は消えてしまいます。必要なデータやファイルがある場合は別途保存してください。
+
+::
+
+    $ singularity shell -writable-tmpfs something.sif 
+    Singularity> echo hogefuga > /etc/testfile
+    Singularity> ls -al /etc/testfile
+    -rw-rw-r-- 1 uXXXXX fugaku 9 Feb 14 04:50 /etc/testfile
+    Singularity> echo hogefuga > /etc/os-release
+    bash: /etc/os-release: Permission denied
+    Singularity> exit
+
+    $ singularity shell something.sif 
+    Singularity> ls -al /etc/hogefuga
+    ls: cannot access '/etc/hogefuga': No such file or directory
+
+永続的な書き込み可能領域を別途用意して、実行時に重ねあわせる --overlay 機能は tmpfs の代わりに別のイメージファイルを作成しておく必要があります。SIF と Overlay の両方に同一のファイルがある場合、overlay 側が優先されるため、イメージの一部改変に用いることもできます。
+
+::
+
+    # 1GBの overlay イメージを作成し、指定したディレクトリを予め作成しておく。
+    # Creating a 1GB of image file with prepared directory inside.
+    $ singularity overlay create --size 1024 --create-dir /usr/share/apps overlay.img
+
+    # overlay イメージ内にデータを展開
+    # Extracting data into Overlay image.
+    $ singularity exec --overlay overlay.img core.sif tar xzf reference-data.tar.gz -C /usr/share/apps
+
+    # overlay イメージをコンテナに重ね合わせて実行
+    # Executeing container with the overlay image.
+    $ singularity exec --overlay overlay.img core.sif ls -al /usr/share/apps
+
+overlay.img 内には書き込まれたデータが残るため、必要なデータを持ち運んだり分別管理に使うことができます。ただし、このイメージファイルの実体は ext3 でフォーマットされており、オーナー情報も生データで保持されるため、別システムで利用の際は注意が必要です。一方で AARCH64 で利用したイメージであっても x86_64 上の Singularity で利用することが可能です。また、loopback マウントして直接操作することもできますし、リサイズが必要な場合は、以下のように通常のパーティションと同じ扱いができます。
+
+::
+
+    $ e2fsck -f overlay.img && resize2fs overlay.img 4096M
+
+さらに singularity sif コマンドを用いると、SIF に埋め込んで1ファイルとしてしまうことも可能です。
+
+::
+
+    $ singularity sif list ubuarm20.sif
+    ------------------------------------------------------------------------------
+    ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
+    ------------------------------------------------------------------------------
+    1    |1       |NONE    |65536-65574               |Def.FILE
+    2    |1       |NONE    |131072-131169             |JSON.Generic
+    3    |1       |NONE    |196608-26320896           |FS (Squashfs/*System/arm64)
+
+    $ singularity sif add --datatype 4 --partfs 2 --parttype 4 --partarch 4 ubuarm20.sif overlay.img
+    $ singularity sif list ubuarm20.sif
+    ------------------------------------------------------------------------------
+    ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
+    ------------------------------------------------------------------------------
+    1    |1       |NONE    |65536-65574               |Def.FILE
+    2    |1       |NONE    |131072-131169             |JSON.Generic
+    3    |1       |NONE    |196608-26320896           |FS (Squashfs/*System/arm64)
+    4    |NONE    |NONE    |26320896-1100062720       |FS (Ext3/Overlay/arm64)
+
+各パラメータの意味については singularity sif add --help として確認してください。これにより、内容の変えられるイメージを運用することができます。また、あとからこの追加分を取り出したり、削除することもできます。
+
+::
+
+    $ singularity sif dump 4 ubuarm20.sif  > ovl.img
+    $ singularity sif del 4 ubuarm20.sif
+
+そしてこれらの操作はログインノード上でも行うことができるので、このためにジョブを投入する必要はありません。Overlay は SIF 同様、1ファイル内に I/O が閉じるため、特に小サイズのファイルが多数ある場合には、共有ファイルシステムのメタデータアクセス負荷の軽減に寄与します。積極的にご利用ください。
+
+MPI 並列について
+*****************
+
+MPI 並列については、ノード内での並列までは大きな問題がありませんが、マルチノード並列では解決すべき問題が多岐に渡るため、ここでは簡易的な記述にとどめておきます。
+
+ノード内並列
+=============
+
+ノード内並列ではプロセスマネージャが直接アプリケーションを起動するため、コンテナ外へ処理が及ぶことがありません。Singularity によりコンテナを起動した中で、mpirun(mpiexec) 等で MPI アプリケーションを起動します。当然ながら必要な MPI ランタイムがコンテナ内に存在することが前提となります。コマンドの例は以下のようになります。
+
+::
+
+    $ singularity exec mpi-apps.sif mpirun -np 8 ~/myapps/hoge inputfile
+
+起動されるコンテナは一つだけで、その中で複数のプロセスが動きます。
+
+マルチノード並列
+=================
+
+マルチノード並列でノード内での並列と同様に起動すると、他のノードへプロセスマネージャの起動は ssh 等により行われます。しかしその先ではコンテナが起動されていないため、ほとんどの場合エラーとなるはずです。そのため、MPI のプロセスマネージャにコンテナ起動を含めてやらせてしまうことでこれに対処します。起動の仕方の例は以下のようになります。
+
+::
+
+    $ mpirun -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
+
+つまり、ホスト側とコンテナ内で同じ MPI をインストールないしは -B 等で共有した状態でアプリケーションがビルドされ、実行時にもそれがコンテナ内外で利用可能である必要があります。そのため、コンテナによるユーザー環境の分離が十分にはできません。また、プロセス数分のコンテナが起動されるため、その分オーバーヘッドも大きくなります。
+
+さらに、tofu をはじめとしたインターコネクタを利用した RDMA 対応も課題です。Singularity では /dev がホスト側と共有されるので、デバイスそのものが見えないことはありません。しかし、デバイスを利用するのに必要なソフトウエアスタックはコンテナ内に用意する必要があり、同時にそれを利用するようアプリケーションもビルドされている必要があります。

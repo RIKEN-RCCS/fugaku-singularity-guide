@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html lang="ja" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>2. Singularity 利用の手順 &#8212; Singularity on FUGAKU  ドキュメント</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=c033477b"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=4dbe4bdc"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="検索" href="search.html" />
+    <link rel="next" title="3. イメージの作成" href="Creating.html" />
+    <link rel="prev" title="1. Singularity とは" href="Introduction.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="singularity">
+<h1><span class="section-number">2. </span>Singularity 利用の手順<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
+<p>Singularity を用いてアプリケーションを利用するには、必要なイメージの取得ないし作成をしなくてはなりません。ここではユーザー自身でイメージを作成する流れを追ってみます。</p>
+<p>イメージの作成を行う方法には大きく分けて３つあります。</p>
+<ol class="arabic simple">
+<li><p>元になるイメージを取得する。または他のイメージを再利用して変換する。</p></li>
+<li><p>イメージの元となるファイルシステムを展開しておき、手動でアプリケーション等をインストールし、イメージファイルへ変換する。</p></li>
+<li><p>イメージ作成の手順など記述した定義ファイルを用いて、Singularity に全ての作業を行わせる。</p></li>
+</ol>
+<p>手動で行う方法は、作業者が環境構築に精通していて、かつ作業内容が単純である場合や、作成時に不具合が出た際のデバッグや簡易な修正には便利です。しかし、作業内容を別途保存しておかないと、再現が厳密にはできなくなる恐れがあります。イメージの作成のたびに手作業を行うよりは、定義ファイルを作成してリポジトリ等で管理し、バッチジョブとして実行できるようにしておくことで、高い再現性とリソースの有効利用が可能になります。</p>
+<p>Singularity というソフトウエア自体には、定義ファイルを利用してイメージを作成する方法として、手元の環境を利用する方法と、クラウドサービスを使う方法が存在しますが、2023年3月現在、「富岳」では手元環境（「富岳」以外の ARM64 環境を含む）での作業のみが可能です。</p>
+<p>Singularity では、既存のコンテナイメージを再利用して自分のイメージを作成することができます。対象は Singularity イメージだけでなく Docker や OS の yum/apt のリポジトリ等が利用可能です。殆どの場合、何らかのベースイメージを元に変更を加えていくことになるでしょう。この文書では Docker hub で配布されている AlmaLinux や Ubuntu、ならびに Redhat 社が供給するコンテナ向け Universal Base Image(UBI) をベースにすることを考えます。</p>
+<section id="id1">
+<h2><span class="section-number">2.1. </span>「富岳」の Singularity 環境<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<p>「富岳」ではログインノードが x86_64 アーキテクチャのため、ARM アーキテクチャのイメージを操作するにはコンピューティングノードで作業する必要があります。ここではまず Singularity の動きを確認するため、インタラクティブジョブとして手作業をしてみます。以下のように jobenv に singularity を指定してジョブを投入してください。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00,jobenv=singularity&quot;
+[INFO] PJM 0000 pjsub Job XXXXXXX submitted.
+[INFO] PJM 0081 ..connected.
+[INFO] PJM 0082 pjsub Interactive job XXXXXXX started.
+[a0XXXX@b31-3208c ~]$ singularity version
+3.9-8.el8
+</pre></div>
+</div>
+<p>上記例では作業時間は30分です。これを過ぎると、ホームディレクトリ等へ保存されたもの以外の作業内容は失われる可能性があります。</p>
+</section>
+<section id="id2">
+<h2><span class="section-number">2.2. </span>コマンドラインでのイメージ作成<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<p>Docker hub や同じ形式でイメージを保持するリポジトリから取得する場合です。以下のようになります。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity pull centos_latest.sif docker://centos:latest
+INFO:    Converting OCI blobs to SIF format
+INFO:    Starting build...
+Getting image source signatures
+Copying blob 333cbcae3fb8 done
+Copying config 424ef6ddfd done
+Writing manifest to image destination
+Storing signatures
+&lt;&lt;中略&gt;&gt;
+INFO:    Creating SIF file...
+INFO:    Build complete:
+
+$ singularity pull ubuntu2004.sif docker://ubuntu:20.04
+$ singularity pull ubi8-python38.sif docker://registry.access.redhat.com/ubi8/python-38
+</pre></div>
+</div>
+<p>docker 形式のリポジトリから SIF ファイルを生成します。一度取得した docker 形式のイメージは ~/.singularity/cache 以下に保存され、次回以降はアップデートがある部分のみダウンロードするので短時間で完了します。イメージ名（ファイル名）を省略することも可能で、その場合リポジトリ名から生成されたファイル名が使われます。また、アーキテクチャの指定が入っていませんが、Singularity は起動したマシンのアーキテクチャを取得しようとするので、コンピュートノードからは自動的に AARCH64 のイメージを取得します。マニュアルを見ると --arch オプションで指定できることになっていますが、取得先が library に限られていており、docker hub等、他の取得先に対してアーキテクチャの指定はできません。</p>
+<p>出来上がった SIF イメージの実体は SquashFS という形式になっています。SquashFS は tar.gz ファイルを直接マウントするような方式であり、起動すると読み込み専用となります。そのため、SIF イメージの中身をあとから操作すること はできません。イメージの中にアプリケーションやランタイムをインストールするには、後述する定義ファイルを用いてビルドする方法と、一度ファイルシステムに展開してから再度 SIF イメージへ変換する方法があります。また、イメージを直接変更せず、書き込みできる領域を重ね合わせる overlay 機能を用いると、実行時のみ有効な変更を施したり、SIF イメージ一つに対して特定のディレクトリやファイルのみ載せ替えて使うこともできます。</p>
+<p>ファイルシステムに展開されたイメージは sandbox と呼ばれ、build コマンドに対し --sandbox オプションを追加して作成します。保存先はディレクトリになり、その中にイメージが展開されています。そのディレクトリは、本来 root がオーナーとなるファイルが全て、ユーザー自身がオーナーとなっており、コンテナを起動しなくても中身をインタラクティブに編集することができます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox ubunt2004 docker://ubuntu:20.04
+INFO:    Starting build...
+Getting image source signatures
+Copying blob 32d7611b468c skipped: already exists
+Copying blob e5be16fdc306 skipped: already exists
+Copying blob a361e87bde5e [--------------------------------------] 0.0b / 0.0b
+Copying config ff84d45488 done
+Writing manifest to image destination
+Storing signatures
+2021/03/31 12:00:00  info unpack layer: sha256:32d7611b468cbc07986302f1a8e74d92e30a1f11cdfa8bc2900aedda2758d050
+&lt;&lt;中略&gt;&gt;
+INFO:    Creating sandbox directory...
+INFO:    Build complete: ubuntu2004
+
+$ cd ubuntu2004
+$ touch foobar
+$ ls -l
+</pre></div>
+</div>
+<p>実のところ、ここまでの使い方では pull コマンドと build コマンドでは --sandbox オプションの有無以外、結果に差はありません。なお、sandbox に展開したイメージから SIF ファイルを作成することも、その逆も build コマンドでできます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build from_sandbox.sif ubuntu2004
+$ singularity build --sandbox from_SIF ubuntu2004.sif
+</pre></div>
+</div>
+<p>なお注意点として、sandbox ディレクトリ自体は当然ながら書き込み可能ですが、sandbox イメージからコンテナを起動すると SIF イメージと同じくリードオンリーとなります。つまり sandbox から起動しても、イメージ内のシステムにアプリケーションをインストールできません。書き込み可能なモードで起動する場合は --writable オプションを指定します（SIF イメージには使えません）。ただし root 権限はありません、コンテナ内で su 等を用いて root 権限を取得することもできません。そのため、root 権限を必要とする、例えば dnf, yum, rpm, dpkg 等のパッケージ管理コマンド等は実行できません。ただし、コンテナ外から sandbox 内にファイルをコピーしたり、それをさらに SIF に変換することは可能です。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec from_sandbox.sif ls -l /foobar
+</pre></div>
+</div>
+<p>次に、できたイメージを用いてコンテナを起動してみましょう。</p>
+</section>
+<section id="id3">
+<h2><span class="section-number">2.3. </span>イメージからのコンテナ起動<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<p>コンテナを起動する方法のうち、Singularity の shell コマンドを使い、コンテナ内でシェルを起動してみます。ホストOSの情報と比較してみましょう。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uname -a
+Linux d28-3101c 4.18.0-372.19.1.el8_6.aarch64 #1 SMP Mon Jul 18 11:10:00 EDT 2022 aarch64 aarch64 aarch64 GNU/Linux
+$ whoami
+a0XXXX
+$cat /etc/os-release
+NAME=&quot;Red Hat Enterprise Linux&quot;
+VERSION=&quot;8.6 (Ootpa)&quot;
+&lt;&lt;後略&gt;&gt;
+
+$ singularity shell ubuntu2004.sif
+Singularity&gt; uname -a
+Linux d28-3101c 4.18.0-372.19.1.el8_6.aarch64 #1 SMP Mon Jul 18 11:10:00 EDT 2022 aarch64 aarch64 aarch64 GNU/Linux
+Singularity&gt; whoami
+a0XXXX
+Singularity&gt; cat /etc/os-release
+NAME=&quot;Ubuntu&quot;
+VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
+&lt;&lt;後略&gt;&gt;
+</pre></div>
+</div>
+<p>「富岳」の OS は Redhat Enterprise Linux 8.6 であるにもかかわらず、コンテナ起動後はカーネルとユーザーはそのまま Ubuntu 20.04.2 LTS となっています。ここではホスト OS の Redhat 系のコマンドは使えず、イメージ内の Ubuntu のコマンドのみ利用可能です。ただし、カーネルはそのままなのでカーネルの機能やバージョンに強く依存するようなアプリケーションは動作に支障がでる可能性はあります。</p>
+<p>次に ls すると以下のように、ホームディレクトリがそのまま見えています。ただし見えるのは自分自身のホームディレクトリに限られます。これを確認するのに ls -al /home や ls -al ~/.. 等を実行してみてください。自身以外のユーザーのホームディレクトリが見えていないことが分かります。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Singularity</span><span class="o">&gt;</span> <span class="n">ls</span> <span class="o">-</span><span class="n">l</span>
+<span class="n">total</span> <span class="mi">440172</span>
+<span class="n">drwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">1</span> <span class="n">a0XXXX</span> <span class="n">rccs</span><span class="o">-</span><span class="n">aot</span>      <span class="mi">4096</span> <span class="n">Mar</span> <span class="mi">31</span> <span class="mi">12</span><span class="p">:</span><span class="mi">30</span> <span class="n">ubuntu2004</span>
+<span class="o">-</span><span class="n">rwxr</span><span class="o">-</span><span class="n">xr</span><span class="o">-</span><span class="n">x</span> <span class="mi">1</span> <span class="n">a0XXXX</span> <span class="n">rccs</span><span class="o">-</span><span class="n">aot</span>  <span class="mi">26320896</span> <span class="n">Mar</span> <span class="mi">31</span> <span class="mi">12</span><span class="p">:</span><span class="mi">00</span> <span class="n">ubuntu2004</span><span class="o">.</span><span class="n">sif</span>
+
+<span class="n">Singularity</span><span class="o">&gt;</span> <span class="n">ls</span> <span class="o">-</span><span class="n">l</span> <span class="o">..</span>
+<span class="n">drwx</span><span class="o">------</span> <span class="mi">1</span> <span class="n">a0XXXX</span> <span class="n">rccs</span><span class="o">-</span><span class="n">aot</span>      <span class="mi">4096</span> <span class="n">Mar</span> <span class="mi">31</span> <span class="mi">12</span><span class="p">:</span><span class="mi">30</span> <span class="n">a0XXXX</span>
+</pre></div>
+</div>
+<p>さらに cat /etc/passwd ないし cat /etc/group とすると、自身のエントリーだけが追加されていることが分かります。そのため、コンテナ内から他のユーザーのホームディレクトリへアクセスするような場合は工夫が必要となります。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Singularity</span><span class="o">&gt;</span> <span class="n">cat</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">passwd</span>
+<span class="n">root</span><span class="p">:</span><span class="n">x</span><span class="p">:</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">:</span><span class="n">root</span><span class="p">:</span><span class="o">/</span><span class="n">root</span><span class="p">:</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+<span class="n">daemon</span><span class="p">:</span><span class="n">x</span><span class="p">:</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">:</span><span class="n">daemon</span><span class="p">:</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">sbin</span><span class="p">:</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">nologin</span>
+<span class="o">&lt;&lt;</span><span class="n">中略</span><span class="o">&gt;&gt;</span>
+<span class="n">_apt</span><span class="p">:</span><span class="n">x</span><span class="p">:</span><span class="mi">100</span><span class="p">:</span><span class="mi">65534</span><span class="p">::</span><span class="o">/</span><span class="n">nonexistent</span><span class="p">:</span><span class="o">/</span><span class="n">usr</span><span class="o">/</span><span class="n">sbin</span><span class="o">/</span><span class="n">nologin</span>
+<span class="n">a0XXXX</span><span class="p">:</span><span class="n">x</span><span class="p">:</span><span class="mi">1</span><span class="n">XXXX</span><span class="p">:</span><span class="mi">1</span><span class="n">XXXX</span><span class="p">::</span><span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">rccs</span><span class="o">-</span><span class="n">aot</span><span class="o">/</span><span class="n">a0XXXX</span><span class="p">:</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+</pre></div>
+</div>
+<p>sandbox 内のファイルを直接コンテナ外で確認すると分かりますが、このユーザー追加はコンテナの起動時に行われるもので、イメージ内には取り込まれていません。</p>
+<p>また、同じくプロセス空間も共有されているので、コンテナの内外で ps コマンドの出力は変わりませんし、kill コマンドによるシグナル送信も相互に可能です。</p>
+<p>次に、シェルを起動せずコンテナ内で直接コマンドを実行してみます。ここでは singularity の exec コマンドを用いてイメージを指定して起動します。イメージは SIF ファイルや sandbox イメージのほか、イメージのリポジトリを指定することもできます。先ほど sandbox から変換したイメージに、作成したファイルがあるかどうかも確認してみましょう。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif cat /etc/os-release
+NAME=&quot;Ubuntu&quot;
+VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
+&lt;&lt;後略&gt;&gt;
+
+$ singularity exec from_sandbox.sif ls -l /foobar
+-rwxr-xr-x 1   root     root         0 Mar 31 12:45 /foobar
+
+$ singularity exec ubuntu2020 cat /etc/os-release
+$ singularity exec docker://centos:latest cat /etc/passwd
+</pre></div>
+</div>
+<p>コンテナ内の環境でコマンドが実行できました。また、ユーザー自身が作ったファイルが SIF へ変換したら root がオーナーとなっていることが分かります。</p>
+<p>リポジトリを指定した場合は SIF イメージへの変換は行わず、キャッシュにダウンロードしたイメージを展開して使います。そのため SIF を使うよりも起動はかなり遅くなります。実利用の際には原則として SIF イメージを利用し、sandbox からの実行や、Docker イメージ等の直接実行はテスト目的に留めてください。</p>
+<p>ホームディレクトリはコンテナ内でも共有されているので、そこにあるファイルをコンテナ内から利用してみましょう。SIF イメージファイルの先頭をコンテナ内のコマンドで見てみます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif head -n 1 ubuntu2004.sif
+#!/usr/bin/env run-singularity
+</pre></div>
+</div>
+<p>コンテナ内からホームディレクトリのファイルへアクセスできました。他のファイルがある場合はそれも試してみてください。</p>
+<p>ここでもうひとつわかることは、SIF イメージはスクリプトになっているということです。2行目以降はバイナリになっていますが、この部分は squashfs という圧縮ファイルシステムでイメージ本体が収められています。そのため内部にあるファイルの総量に比べ、SIF ファイルのサイズはかなり小さくなります。結果として SIF イメージはキャッシュにのりやすく、ホームディレクトリ内に細かいファイルを展開するよりも共有ストレージへの、特にメタデータアクセス負荷が低いという特徴があります。そのためアプリケーションの起動が高速かつ安定します。</p>
+<p>スクリプトなので、SIF イメージは直接起動することができます。やってみましょう。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./ubuntu2004.sif
+Singularity&gt;
+</pre></div>
+</div>
+<p>プロンプトが出てきてそのまま操作できます。つまり、単純に作られた SIF イメージを直接起動すると shell コマンドを使ったのと同じになります。また、コマンドをオプションとして与えると exec コマンドの実行と同じになります。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ./ubuntu2004.sif cat /etc/os-release
+NAME=&quot;Ubuntu&quot;
+VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
+&lt;&lt;後略&gt;&gt;
+</pre></div>
+</div>
+<p>Singularity を用いることで、システムに用意された環境にとらわれず、自由なユーザー環境をアプリケーションの実行環境として使い分けられることが分かります。</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Singularity on FUGAKU</a></h1>
+
+
+
+
+
+
+
+
+<h3>ナビゲーション</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. Singularity とは</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Singularity 利用の手順</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">2.1. 「富岳」の Singularity 環境</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">2.2. コマンドラインでのイメージ作成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">2.3. イメージからのコンテナ起動</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">3. イメージの作成</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">4. 実行時オプションと挙動</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">5. ジョブスケジューラとの連携</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="Introduction.html" title="前の章へ"><span class="section-number">1. </span>Singularity とは</a></li>
+      <li>Next: <a href="Creating.html" title="次の章へ"><span class="section-number">3. </span>イメージの作成</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">クイック検索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="検索" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021-, RIKEN R-CCS.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.2.6.
+    &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
+    </div>
+  </body>
+</html>
