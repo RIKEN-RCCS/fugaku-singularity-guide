@@ -1,2 +1,3 @@
 # fugaku-singularity-guide
-A staging repository for github-pages
+
+* [富岳における SingularityPRO 利用法](ja/index.html)
