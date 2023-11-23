@@ -1,0 +1,422 @@
+イメージの作成
+###############
+
+実行用の SIF イメージを作成する方法を解説します。必要なセットアップ内容に応じて最適な方法があるので、適宜選んでください。
+
+sandbox を用いる方法
+**********************
+
+sandbox イメージを直接編集してシステムを構築する場合、実際の作業自体は手作業となるため、簡易なイメージ作成や修正には便利ですが、作業履歴が残らないなどの問題があります。
+
+コンテナを起動する必要がない場合
+================================
+
+既に前節に書いた通り、sandbox の中にはユーザーがファイルなどを持ち込んだり、設定等を編集しておけばそれを SIF イメージへ固めることができます。これは既に出来上がっているアプリケーションやリファレンスとなるデータ等を展開すれば良いだけの場合には便利です。作業手順のイメージは以下のようになるでしょう。
+
+::
+
+    $ singularity build --sandbox ubi_py38 docker://registry.access.redhat.com/ubi8/python-38
+    $ tar xvzf ~/application.tar.gz -C ubi_py38
+    usr/local/bin/application
+    usr/local/bin/subcommand
+    usr/local/lib/libappr.so.1
+    <<..snip..>>
+    $ vi ubi_py38/usr/local/etc/application.config
+    $ cp ~/tmp/config.json ubi_py38/usr/local/etc
+    $ singularity build appl.sif ubi_py38
+    INFO:    Starting build...
+    INFO:    Creating SIF file...
+    INFO:    Build complete: appl.sif
+    $ singularity exec appl.sif /usr/local/bin/application
+
+#. Redhat 社の UBI のうち、Python-3.8 がインストール済みのイメージを取得して sandbox イメージを作成しています。
+#. /usr/local 以下に展開済みのアプリケーションの tar ボールを、sandbox 内に展開しています。
+#. 展開したファイルを編集したり、外から設定ファイルを持ち込んでいます。
+#. 変更が終わった sandbox イメージから SIF イメージを生成しています。
+#. 出来上がった SIF イメージからアプリケーションを起動しています。
+
+このように出来上がったファイルを取り込むだけで環境構築ができるものであれば、非常に簡単にイメージ作成は完了します。
+
+コンテナを起動してシステムを変更する場合
+========================================
+
+sandbox 内で本来 root がオーナーとなるファイルやディレクトリが全てユーザーがオーナーとなっていました。--writable オプションをつけてコンテナを起動すると、ファイルのオーナーは同じ状態で起動し、システムファイルもユーザー権限で編集できます。
+
+::
+
+    $ singularity shell --writable ubuntu2004
+    Singularity> touch /hogefuga
+    Singularity> ls -l /
+    ％％％％％％％％％％％％％％％％％
+    Singularity> exit
+    $ singularity build from_executable.sif ubuntu2004
+
+例えばパッケージを追加インストールするなど、root 権限でイメージ内のシステムに変更を加えたい場合はどうすればよいでしょうか。これには --fakeroot オプションを --writable オプションと並行して使う必要があります。--fakeroot は Linux カーネルの機能を使い、コンテナ内のユーザー ID の名前空間と、ホスト OS におけるユーザー ID の名前空間とを分離し、コンテナ内の UID=0 即ち root をホスト側のユーザーにマッピングします。これにより、コンテナ内では root 権限を使いつつ、ホスト側からは一般ユーザー権限で作業しているように見せかけています。この時、ユーザーのホームディレクトリは /root にバインドされます。
+
+しかしここで「富岳」特有の問題があります。一般ユーザーのホームディレクトリは、以下のようなパーミッション設定になっていて、fugaku グループに所属していないとアクセスができません。
+
+::
+    
+    $ ls -dl /vol0004/mdt0/home
+    drwxr-x--- 281 root fugaku 16384 Feb 23 17:50 /vol0004/mdt0/home
+    $ ls -dl /vol0004/mdt0/home/uXXXXX
+    drwx------ 8 uXXXXX fugaku 4096 Apr 25 18:45 /vol0004/mdt0/home/uXXXXXX
+
+一般ユーザーはサブグループとして fugaku グループに属しているものの、プライマリグループではありません。Linux カーネルの UID 名前空間分離機能の制約として、グループ権限はプライマリグループのみマッピングできるため、コンテナ内のユーザーは fugaku グループへのアクセス権限を持つことができません。そのためホームディレクトリのマウントができず、failed to mount /home/uXXXXX to /root: permission denied というエラーとなってしまいます。これを回避する方法は２つあります。
+
+#. 事前に newgrp fugaku として、プライマリグループを fugaku グループとしてから実行する。ただし、ファイルのオーナーやグループ権限は fugaku になってしまう。
+#. この問題に対処するため SingularityPRO 3.11-4 で追加された --no-setgroups オプションを利用する。
+
+これ以降では newgrp fugaku をした状態を仮定していきます。--fakeroot を付けた時、コンテナ内では root になっていることを確認してみます。
+
+::
+
+    $ newgrp fugaku
+    $ singularity shell --writable --fakeroot ubuntu2004
+    WARNING: Skipping mount /etc/localtime [binds]: /etc/localtime doesn't exist in container
+    Singularity> whoami
+    root
+    Singularity> pwd
+    /root
+    Singulraity> ls -l /home
+    total 0
+
+ただし、これにはもう一つ解決すべき問題があります。UID のマッピングはコンテナを起動しているノードでのみ有効です。つまりローカルストレージであれば、ファイルのオーナーもそれに追従することができますが、FEFS や NFS といった共有ファイルシステムでは、ストレージが ID の分離に対応できないため、ホームディレクトリ上にある sandbox イメージでの --fakeroot による環境構築作業ができません。「富岳」においてユーザーが利用できるローカルストレージとしては /worktmp があり、イメージのビルドにはこちらを使う必要がありますが、ここはコンピュートノードのメモリをストレージとして使えるようにしています。コンピュートノードはメモリを 32GB しか持ちませんので、サイズの大きなイメージの作成はできない可能性があります。ご注意ください。
+
+SIF イメージから /worktmp ディレクトリに sandbox イメージを作り、任意のパッケージを --fakeroot 環境でインストールし、それを SIF イメージに戻す流れは以下のようになるはずです。
+
+::
+
+    $ newgrp fugaku
+    $ singularity build --sandbox /worktmp/ubuntu-sandbox ubuntu2004.sif
+    $ singularity exec --fakeroot --writable /worktmp/ubuntu-sandbox apt install -y XXXXXXX 　# コマンド実行の例
+    $ singularity shell --fakeroot --writable /worktmp/ubuntu-sandbox     # シェル環境でインタラクティブ作業する例
+    Singularity> apt install XXXXXXX
+    Reading package lists... Done
+    Building dependency tree
+    <<..snip..>>
+    0 upgraded, 3 newly installed, 0 to remove and 0 not upgraded.
+    Singularity> exit
+    $ singularity build ~/from-sandbox.sif /worktmp/ubuntu-sandbox
+
+作業が少なければ shell ではなく、例のように exec でコマンドを実行するだけでもよいでしょう。
+
+定義ファイルによるカスタムイメージ
+**********************************
+
+Singularity のイメージ作成は定義ファイルに全てを記載しておくことができます。ベースイメージの取得先、ファイルの持ち込み、コンテナの中で行うシステムセットアップ、実行環境の定義などです。特に実行環境の設定をうまく使うと、コンテナの利用の際の利便性を大幅に高めることができます。
+
+定義ファイルは以前はレシピファイルと呼ばれていたことがあり呼び方が定まっていませんが、今は公式には Definition File となっており、拡張子に def を使っています。ここでは簡単な使い方に留めますので、詳細については公式ドキュメントを参照してください。
+
+定義ファイルはヘッダー、構築、実行環境定義、説明、の4つの部分からなります。ただし、最低限ヘッダーだけあれば動作します。
+
+::
+
+    $ cat example.def
+    Bootstrap: docker
+    From: registry.access.redhat.com/ubi8/python-38
+
+    %file
+        some_data.tar.gz  /
+
+    %post
+        dnf install -y python3-libxml2
+        tar xzf /some_data.tar.gz -C /usr/share
+        rm -f /some_data.tar.gz
+        dnf clean all
+    
+    %environment
+        export LC_ALL=en_US.utf-8
+        export CONFIG_FILE=~/applicatin/etc/some.config
+
+    %runscript
+        python $*
+    
+    %labels
+        Author Tarou.Fugaku@fugaku.org
+        Version v0.99.1
+
+この例は次のような内容を記述しています。
+
+#. ヘッダーの Bootstrap:, From: にて UBI8 の Python3.8 環境を取得し $TMPDIR に sandbox イメージを作成。 
+#. 手元のデータ(some_data.tar.gz)をコンテナ内のルートディレクトリへ取り込み。
+#. コンテナを起動し、python3-libxml2 を dnf でインストール。
+#. %file で取り込んだデータを /usr/share へ展開し、ファイルや dnf のキャッシュなどを削除。
+#. %environment でコンテナ起動時の環境変数を設定。
+#. %runscript で、イメージファイルの直接実行時に実行されるコマンドを設定。
+#. %labels でコンテナの情報を記述。
+        
+ここで分かる様に、sandbox 中で %post 処理が行われます、dnf コマンドは root 権限でないと使えないため、この定義ファイルによるイメージの作成には root 権限か、--fakeroot による実行が必要になります。また、「富岳」では $TMPDIR がホームディレクトリになるよう設定されているため、そのままではビルドに失敗します。そこで以下のように実行してください。
+
+::
+
+    $ export TMPDIR=/worktmp
+    $ newgrp fugaku
+    $ singularity build --fakeroot ~/from_def.sif example.def
+
+処理内容により所要時間は様々ですが、from_def.sif が出来上がるはずです。もし $TMPDIR を変更できない場合、$SINGULARITY_TMPDIR を設定することで Singularity のイメージ展開先だけを指定することができます。
+
+実行環境の埋め込み
+******************
+
+出来上がったイメージの定義ファイルには %runscript に python $* の記述があります。これはコンテナ起動と同時に、渡されたオプションを付加して python を起動していることになります。つまり、以下の二つはどちらも同じ事をしています。
+
+::
+
+    $ singularity exec from_def.sif python hoge.py 1024
+    $ ./from_def.sif hoge.py 1024
+
+例えば、イメージのファイル名をアプリケーションのコマンドと同じにして PATH の通ったディレクトリに配置しておくと、コンテナを使っていることも意識する必要がなくなります。また、定型の前処理等を埋め込んでおくことも可能ですし、%environment を活用して、設定もれ等によるトラブルを防止することもできます。これらはバッチジョブ環境においてはジョブスクリプトの中で行われてきたことですが、Singularity でイメージに埋め込むことでジョブスクリプトをシンプルにでき、ミスを減らすことができます。
+
+このほかにも複数のアプリケーションを同梱して使い分けるための %app や、簡単な説明を記述する %help などがあります。詳細はドキュメントを参照してください。この定義ファイルをリポジトリで管理しておけば、どのように作られたイメージを使って計算を行ったのかが明確になり、再度同じ環境を作る場合でも再現が容易です。ただし、最初のイメージの作成の際、From: として latest のようなタグを用いると、イメージを作成するたびに内容が変わることになります。ご注意ください。
+
+ジョブ投入によるイメージの作成
+******************************
+
+これらの作業を「富岳」へのジョブとして投入してみましょう。以下のような簡単なスクリプトを作成し,ジョブ投入します。
+
+::
+
+    $ cat job.sh
+    #!/bin/bash
+
+    export TMPDIR=/worktmp
+<<<<<<< a8c8547d01c794e43ad82d939cd1ca0eff290d3f
+    newgrp fugaku
+    singularity biuld --fakeroot create_job.sif example.def
+=======
+    singularity build --fakeroot create_job.sif example.def
+>>>>>>> 62ce00750d4f1476503469d4cbdb64a4102adde1
+
+    $ pjsub -L "rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00,jobenv=singularity" ./job.sh
+
+同様にイメージが作成できます。
+
+コンテナへの TCSDS の取り込み
+*****************************
+
+「富岳」では独自リポジトリが用意され、言語環境やライブラリが用意されています。そこからパッケージを取得してインストールすることで、特定バージョンのランタイムをコンテナイメージに埋め込んでおくことができます。現時点では rpm ファイルのみが用意されているため、Ubuntu など Debian 系の OS へはインストールができませんので、RHEL やその派生である UBI 等へのインストール方法を示します。ここでは簡単のために UBI を題材にしますが、UBI は開発系のパッケージ等が限定的にしか供給されていないため、実際には使いにくいと思われますのでご注意ください。
+
+TCSDS の置かれているリポジトリは /home/apps/singularity/tcs/ になりますが、ドキュメント類も含まれておりますので必要に応じて参照してください。ただし、コンテナに取り込むには /home 以下にあると都合が悪いため、一工夫します。まず、以下のようなリポジトリファイルを用意してください。
+
+::
+
+    $ cat tcs.repo
+    [tcs]
+    enabled=1
+    name=tcs
+    gpgcheck=0
+    baseurl=file:///opt/repo/tcs/
+
+このファイルを /tmp にコピーしておきます。CentOS や UBI 等の RHEL 系イメージを /worktmp に sandbox で生成します。仮に source というディレクトリにしておきます。
+
+次に、このイメージを --writable かつ --fakeroot で起動するのですが、このままでは /home 以下にあるローカルリポジトリにアクセスできません。そこで、リポジトリのディレクトリを -B を用いてコンテナ内の別ディレクトリ、ここでは /opt/repo にバインドします。ただし、--writable を使うと自動的にバインド先のディレクトリが作られないので、事前に作成しておきます。その後、repo ファイルを使ってコンテナ内にリポジトリ情報を追加します。repo ファイルは、デフォルトでバインドされる /tmp に置きましたので、明示的に持ち込む必要はありません。
+
+::
+
+<<<<<<< a8c8547d01c794e43ad82d939cd1ca0eff290d3f
+    $ singularity build --sandbox -f source docker://registry.access.redhat.com/ubi8/python-38
+    <<中略>>
+=======
+    $ singularity build -f source docker://registry.access.redhat.com/ubi8/python-38
+    <<..snip..>>
+>>>>>>> 62ce00750d4f1476503469d4cbdb64a4102adde1
+    $ mkdir source/opt/repo
+    $ singularity shell --writable --fakeroot -B /home/apps/singularity:/opt/repo source
+    Singularity> dnf config-manager --add-repo=/tmp/tcs.repo
+    Updating Subscription Management repositories.
+    Unable to read consumer identity
+    This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+    Adding repo from: file:///tmp/tcs.repo
+
+    Singularity> dnf repolist
+    Updating Subscription Management repositories.
+    Unable to read consumer identity
+    This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+    repo id                                             repo name
+    tcs                                                 tcs
+    ubi-8-appstream                                     Red Hat Universal Base Image 8 (RPMs) - AppStream
+    ubi-8-baseos                                        Red Hat Universal Base Image 8 (RPMs) - BaseOS
+    ubi-8-codeready-builder                             Red Hat Universal Base Image 8 (RPMs) - CodeReady Builder
+
+    Singularity> dnf search FJSV
+    Updating Subscription Management repositories.
+    Unable to read consumer identity
+
+    This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+    Last metadata expiration check: 0:03:40 ago on Wed 20 Oct 2021 12:07:04 PM JST.
+    ===================================== Name Matched: FJSV =====================================
+    FJSVxtclanga-common-TCSDS10R24.noarch : Generation Management for Language
+    FJSVxtclanga-fc-compiler-CECA023.aarch64 : Fujitsu Fortran/C/C++ Compiler
+    FJSVxtclanga-fc-compiler-doc-CMLN016.noarch : Fujitsu Fortran/C/C++ Compiler Online Documents
+    <<..snip..>>
+
+このようにリポジトリへアクセスできることが確認できましたら、通常通り必要なパッケージを選択してインストールできます。
+
+::
+
+    Singularity> dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
+    Updating Subscription Management repositories.
+    Unable to read consumer identity
+    This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+    Last metadata expiration check: 0:07:29 ago on Wed 20 Oct 2021 12:07:04 PM JST.
+    Dependencies resolved.
+    ===============================================================================================
+    Package                                Architecture     Version         Repository       Size
+    ===============================================================================================
+    Installing:
+        FJSVxtclanga-fc-compiler-CECA023    aarch64         4.4.0-03        tcs              88 M
+    
+    Transaction Summary
+    ===============================================================================================
+    Install  1 Package
+
+    Total size: 88 M
+    Installed size: 516 M
+    Downloading Packages:
+    Running transaction check
+    Transaction check succeeded.
+    Running transaction test
+    Transaction test succeeded.
+    Running transaction
+        Preparing        :                                                                  1/1
+        Installing       : FJSVxtclanga-fc-compiler-CECA023-4.4.0-03.aarch64                1/1
+        Verifying        : FJSVxtclanga-fc-compiler-CECA023-4.4.0-03.aarch64                1/1
+    Installed products updated.
+
+    Installed:
+        FJSVxtclanga-fc-compiler-CECA023-4.4.0-03.aarch64
+    Complete!
+    $ dnf clean all
+
+イメージをコンパクトにするため、キャッシュをクリアしておくのをお勧めします。これは定義ファイルを用いた場合の %post でリポジトリからのインストールをした場合にも同様です。
+パッケージやアプリケーションの導入が済んだら、sandbox イメージを SIF イメージへ変換して作業は完了します。
+
+::
+
+    $ singularity build -f ~/tcs-installed.sif source
+    WARNING: 'nodev' mount option set on /worktmp, it could be a source of failure during build process
+    INFO:    Starting build...
+    INFO:    Creating SIF file...
+    INFO:    Build complete: /home/uXXXXX/tcs-installed.sif
+
+本ドキュメントの初版執筆当時の Singularity PRO では build 時に -B が使えなかったため、上記のように一度 sandbox を経由する必要があり、インストール済みの sandbox に対して定義ファイルによる処理や環境変数の埋め込みを以下のような定義ファイルで別途実施しました。
+
+::
+
+    $ cat from_source.def
+    Bootstrap: localimage
+    From: /worktmp/source
+    %post 
+    <<..snip..>>
+    $ singularity build -f ~/from_def_with_tcs.sif from_source.def
+
+2023年3月現在では、build 時にも -B オプションが使えるバージョンであるため、repo ファイルを %file で取り込ませたり、%post の中で直接ファイル生成するよう記述した定義ファイルで、手作業なしの構築が可能となっています。
+
+::
+
+    $ cat direct_build.def
+    Bootstrap: docker
+    From: registry.access.redhat.com/ubi8/python-38
+    %file
+        tcs.repo /
+    %post
+        dnf config-manager --add-repo=/tcs.repo
+        dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
+        dnf clean all
+        rm -f /tcs.repo
+    <<後略>>
+    $ singularity build -f -B /home/apps/singularity:/opt/repo ubi_tcs.sif direct_build.def
+
+
+電子署名によるイメージ管理
+**************************
+
+Singularity の SIF イメージは１ファイルで管理されるため、ファイル名を変えられてしまえば、そのイメージが誰がどのように作ったものかトレースできなくなります。これは管理上の問題だけでなくセキュリティの問題を引き起こす恐れがあります。そこでイメージに作成者による電子署名をつけることで、イメージの改変や入れ替えを防止できます。
+
+電子署名は公開鍵の仕組みを使います。まずイメージのハッシュ値を計算し、秘密鍵で暗号化してイメージに追加（署名）します。同時に公開鍵をイメージとは別に安全な手段で管理します。イメージを受け取ったユーザーは、それが作成者が作ったものと同一かどうかを確認するため、イメージのハッシュ値を計算すると共に、署名の暗号を作成者の公開鍵で復号して比較します。
+
+キーペアの作成
+===============
+
+まず、秘密鍵と公開鍵の組み合わせ(キーペア)を作成します。key コマンドを使います。途中キーストアへプッシュするかどうかを聞かれますが、ここでは n としておいてください。もし Y としてもキーペア自体はできあがっています。
+
+::
+
+    $ singularity key newpair
+    Enter your name (e.g., John Doe) : Fugaku Tarou
+    Enter your email address (e.g., john.doe@example.com) : tarou@fugaku.org
+    Enter optional comment (e.g., development keys) : Test Keypair
+    Enter a passphrase :
+    Retype your passphrase :
+    Would you like to push it to the keystore? [Y,n] n
+    Generating Entity and OpenPGP Key Pair... done
+    NOT pushing newly created key to: https://keys.sylabs.io
+
+キーは公開鍵と秘密鍵それぞれ以下のように list オプションで確認でき、それぞれ ~/.singularity/sypgp に保存されています。
+
+::
+
+    $ singularity key list
+    Public key listing (/home/rccs-aot/a0XXXX/.singularity/sypgp/pgp-public):
+    0) U: Fugaku Tarou (Test Keypair) <tarou@fugaku.org>
+    C: 2021-03-31 13:00:00 +0900 JST
+    F: B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW
+    L: 4096
+    --------
+    $ singularity key list --secret
+    Public key listing (/home/rccs-aot/a0XXXX/.singularity/sypgp/pgp-secret):
+    1) U: Fugaku Tarou (Test Keypair) <tarou@fugaku.org>
+    C: 2021-03-31 13:00:00 +0900 JST
+    F: B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW
+    L: 4096
+    --------
+    $ ls -l ~/.singularity/sypgp
+    -rw------- 1 a0XXXX a0XXXX  6625 Mar 31 13:00 pgp-public
+    -rw------- 1 a0XXXX a0XXXX 14455 Mar 31 13:00 pgp-secret
+
+実際にこれを用いてイメージに署名（サイン）し、検証（ベリファイ）してみます。
+
+署名と検証の方法
+=================
+
+singularity による署名は sign コマンドを用います。SIF イメージだけが対象となります。
+
+::
+
+    $ singularity sign ubuntu2004.sif
+    Enter key passphrase :
+    Signature created and applied to ulsb.sif
+
+キーペアを複数作成して保存している場合、どれを使うかを聞かれますが、一つであれば作成した際のパスフレーズを入力するだけです。署名の分だけファイルサイズもわずかに大きくなります。次にイメージを検証してみましょう。
+
+::
+
+    $ singularity verify ubuntu2004.sif
+    Verifying image: ubuntu2004.sif
+    [LOCAL]   Signing entity: Fugaku Tarou (Test Keypair) <tarou@fugaku.org>
+    [LOCAL]   Fingerprint: B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW
+    Objects verified:
+    ID  |GROUP   |LINK    |TYPE
+    ------------------------------------------------
+    1   |1       |NONE    |Def.FILE
+    2   |1       |NONE    |FS
+    Container verified: ubuntu2004.sif
+
+このイメージを誰かに渡す場合、公開鍵を別の方法で共有します。キーストアとよばれるサービスを使うこともありますが、ここでは鍵をファイルへ変換してやり取りをする方法を試してみましょう。public.asc というファイルに自分の公開鍵を出力し、他の誰かがそれを検証用にインポートするケースです。
+
+::
+    
+    $ singularity key export ./public.asc
+    Public key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW correctly exported to file: ./public.asc
+    
+    $ singularity key import ./public.asc
+    Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully added to the public keyring
+
+このインポートした公開鍵を用いて、取得したイメージが意図した通りのものかを確認すること、作成時と全く同一のものかどうかの確認ができます。また、署名は複数重ねてかけることができるので、作成者と承認者両方の署名をつけるといった運用が可能です。
+
+

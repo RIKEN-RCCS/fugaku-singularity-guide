@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>4. Runtime options and behavior &#8212; Singularity on FUGAKU  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="5. Cooperation with job scheduler" href="Submitting.html" />
+    <link rel="prev" title="3. Creating an image" href="Creating.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="id1">
+<h1><span class="section-number">4. </span>Runtime options and behavior<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
+<p>Here, we will introduce some options that are often used when running Singularity, and some useful behaviors.</p>
+<section id="id2">
+<h2><span class="section-number">4.1. </span>Incorporating the environment on the host side<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<section id="id3">
+<h3><span class="section-number">4.1.1. </span>Handling of environment variables<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<p>We have seen that access to files in your home directory is enabled by default. What about environment variables? If you display the environment variables in the container as follows, you can see that the variables on the host side at runtime are inherited.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif env
+</pre></div>
+</div>
+<p>The content of %environment described in the definition file is actually posted as a script in the image, and the operation that is sourced when the container is started. Therefore, it is possible to capture and manipulate variables on the host side or overwrite them. Also, if you set a variable called SINGULARITYENV_*** (*** is an arbitrary string that can be used for variables) on the host side before executing the container, since the variable *** will be set in the container, the variable in the container is set in advance without interfering with the environment on the host side. And the content described in %environment is temporarily set or overwritten without recreating the image.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat example.def
+&lt;&lt;..snip..&gt;&gt;
+%environment
+    export WORKFILE=/tmp/work_defined_in_env
+%runscript
+    echo &#39;WORKFILE in Container&#39; = ${WORKFILE}
+
+$ cat job.sh
+&lt;&lt;..snip..&gt;&gt;
+    export WORKFILE=/workdir/workfile
+    export SINGULARITYENV_WORKFILE=/workdir/work_defined_by_SINGULARITYENV
+    ~/example.sif
+</pre></div>
+</div>
+<p>The execution result in this case is as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">WORKFILE</span> <span class="ow">in</span> <span class="n">Container</span> <span class="o">=</span> <span class="o">/</span><span class="n">workdir</span><span class="o">/</span><span class="n">work_defined_by_SINGULARITYENV</span>
+
+<span class="c1"># without setting SINGULARITYENV</span>
+<span class="n">WORKFILE</span> <span class="ow">in</span> <span class="n">Container</span> <span class="o">=</span> <span class="o">/</span><span class="n">tmp</span><span class="o">/</span><span class="n">work_defined_in_env</span>
+
+<span class="c1"># without setting both of SINGULARITYENV and %environment</span>
+<span class="n">WORKFILE</span> <span class="ow">in</span> <span class="n">Container</span> <span class="o">=</span> <span class="o">/</span><span class="n">workdir</span><span class="o">/</span><span class="n">workfile</span>
+</pre></div>
+</div>
+<p>This makes it easy to change conditions in different environments without having to recreate the image.</p>
+</section>
+<section id="id4">
+<h3><span class="section-number">4.1.2. </span>Directory binding<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<p>When you start a singularity container, it binds your own home directory, /tmp, /var/tmp, /dev, /proc, /sys. inside the container by default. It also binds the current directory at startup, but only if a directory with the same name exists in the container. If you boot the image from a directory that does not exist in the container, you may want to access other directories from within the container, as well as the current directory. For example, applications and data already installed on the host side may be redundant or huge to be imported into the image, or you may want to use the home directory of another user who shares the file.</p>
+<p>In this case, you can specify additional directories to bind with the -B option at boot time. you can specify different paths by separating the directory on the host side and the mount point in the container with ':' , but if you omit the mount destination, it will be bound to the directory with the same name.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif -B /worktmp:/scratch ls -al /scratch
+</pre></div>
+</div>
+<p>It will be remounted inside the container with the -bind option, but you can add more mount options here with ':' . For example, if you want to make it read-only in a container, you can write as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif -B /system/reference:/opt/data:ro ls -al /opt/data
+</pre></div>
+</div>
+<p>Also, if you want to specify multiple directories, you can use multiple -B or separate them with ','.</p>
+<p>There are some caveats to the binding behavior. The current directory is bound by default, so if you start a container from a directory such as /usr/ bin or /usr/lib, it will replace them in the container with the directory on the host side, resulting in a runtime error. There is. also, if you start from another user’s home directory and try to bind automatically, it will not be bound because that directory does not exist in the container. Must be explicitly specified with the -B option.</p>
+</section>
+</section>
+<section id="id5">
+<h2><span class="section-number">4.2. </span>Instantiation and interactive processing<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<p>So far, we have integrated the launch of the container and the launch of the application, and used it so that the user can launch the application directly without being aware of the container. However, with this usage, when the started application is closed, the container will be closed at the same time. Of course, you can restart it, but even if it is a lightweight container implementation, if you repeat it many times, the overhead will be wasted. Also, can singularity not be used for service operations such as web servers? To accommodate these uses, singularity has a feature called instantiation that allows you to maintain containers.</p>
+<p>Start and instantiate only the container as shown below. The last string is the instance name, which must be a name that is not covered by what is already running. Make sure it is started correctly with the list subcommand.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity instance start ubuntu2004.sif Focal
+$ singularity instance list
+INSTANCE NAME    PID      IP    IMAGE
+Focal            12016          /home/uXXXXX/ubuntu2004.sif
+</pre></div>
+</div>
+<p>The image is now unpacked and mounted, that is, the container is up and waiting. To run your application within this instance, specify the instance name instead of the image name, as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec instance://Focal cat /etc/os-release
+</pre></div>
+</div>
+<p>1インスタンスに対して複数のアプリケーションを投入して実行することも可能です。例えばとあるディレクトリに存在する膨大な数のファイルに対して同一処理をするような場合、</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>for data in data.*
+do
+    singularity exec jammy.sif appl ${data}
+done
+</pre></div>
+</div>
+<p>のような処理をするよりも、以下のようにする方が、一般的にはコンテナ起動のオーバーヘッドを削減でき、スループットを上げることができます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>singularity instance start jammy jammy.sif
+for data in data.*
+do
+    singularity exec instance://jammy appl ${data}
+done
+</pre></div>
+</div>
+<p>インスタンスは複数立ち上げておくことができるので、異なる環境での処理を1ジョブ内で行うことができます。一般的にはインスタンス機能はデータベースやウェブサーバー等、ノード内になんらかのサービスを起動させておく場合に利用されています。インスタンス起動時に自動的に行う処理を埋め込む場合、ビルド時の定義ファイルで %runscript の代わりに %startscript に記述します。</p>
+<p>インスタンスを止めるには stop オプションを使います。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity instance stop Focal
+</pre></div>
+</div>
+</section>
+<section id="id6">
+<h2><span class="section-number">4.3. </span>Direct execution with specified repository<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
+<p>Recall that we were getting a docker image when we created the sif image. during pull and build, the layer files that make up the docker image are cached under ~/.singularity. The behavior of this cache does not change even if you specify oras or library as the target. And singularity can do this directly.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec docker://ubuntu:latest head -n 5 /etc/os-release
+INFO:    Converting OCI blobs to SIF format
+WARNING: &#39;nodev&#39; mount option set on /worktmp, it could be a source of failure during build process
+INFO:    Starting build...
+Getting image source signatures
+Copying blob a39c84e173f0 done
+Copying config 4db8450a4d done
+Writing manifest to image destination
+Storing signatures
+2021/03/21 12:14:15  info unpack layer: sha256:a39c84e173f038958d338f55a9e8ee64bb6643e8ac6ae98e08ca65146e668d86
+2021/03/21 12:14:15  warn xattr{etc/gshadow} ignoring ENOTSUP on setxattr &quot;user.rootlesscontainers&quot;
+2021/03/21 12:14:15  warn xattr{/worktmp/build-temp-063655636/rootfs/etc/gshadow} destination filesystem does not support xattrs, further warnings will be suppressed
+INFO:    Creating SIF file...
+NAME=&quot;Ubuntu&quot;
+VERSION=&quot;20.04.3 LTS (Focal Fossa)&quot;
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME=&quot;Ubuntu 20.04.3 LTS&quot;
+</pre></div>
+</div>
+<p>As you can see from the message, it is internally sif imaged and stored under ~/.singularity. when you re-execute, it will check the repository for updates, make the best use of the cache, and synchronize. If there is no update, launch his sif image in the cache directly as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec docker://ubuntu:latest head -n 5 /etc/os-release
+INFO:    Using cached SIF image
+NAME=&quot;Ubuntu&quot;
+VERSION=&quot;20.04.3 LTS (Focal Fossa)&quot;
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME=&quot;Ubuntu 20.04.3 LTS&quot;
+</pre></div>
+</div>
+<p>If there is an update on the repository side, get it, recreate the sif image, and then execute it. therefore, this execution method is not suitable when it is necessary to maintain an execution environment with a proven track record. It is recommend that you always use it only when you want to import and use the latest version of the repository.</p>
+<p>キャッシュの情報を見たり、クリアすることもできます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity cache list -v
+NAME                     DATE CREATED           SIZE             TYPE
+061be60b872e3a155a2364   2021-10-28 22:14:15    0.34 KiB         blob
+2d5d59c100e7ad4ac35a22   2021-11-03 13:54:19    78.57 MiB        blob
+&lt;&lt;中略&gt;&gt;
+sha256.9a6ee1f8fdecb21   2023-02-22 17:14:02    2.65 MiB         library
+626ffe58f6e7566e00254b   2021-10-28 22:14:18    25.15 MiB        oci-tmp
+
+There are 2 container file(s) using 27.81 MiB and 25 oci blob file(s) using 692.86 MiB of space
+Total space used: 720.67 MiB
+
+$ singularity cache clean
+</pre></div>
+</div>
+<p>これらのキャッシュは、ここで触れている実行時だけでなく build/pull の際にも利用されます。</p>
+</section>
+<section id="overlay">
+<h2><span class="section-number">4.4. </span>Overlay 機能について<a class="headerlink" href="#overlay" title="Link to this heading">¶</a></h2>
+<p>SIF イメージの実体は SquashFS(tar+gzip)なので、実行時はリードオンリーとなります。しかし、一時的にファイルをイメージ内に置きたい場合や、部分的に異なっているだけのイメージが必要な時、全てを含んだイメージを複数持つのは無駄なので差分だけ持ちたいといったケースがあります。これには Linux カーネルの持つ OverlayFS という機能を使い、複数のファイルシステムを重ね合わせる事で実現します。Singularity には二つの方法が用意されています。</p>
+<ol class="arabic simple">
+<li><p>一時的な書き込み可能領域を使う –writable-tmpfs オプション。文字通りメモリ由来の tmpfs を重ね合わせます。</p></li>
+<li><p>永続的な書き込み可能領域を別途用意して、実行時に重ねあわせる -—overlay オプション。</p></li>
+</ol>
+<p>writable-tmpfs オプションを使うと、tmpfs を既存イメージに重ね合わせるので、任意の場所に新たなファイルやディレクトリが作成できます。ただし、イメージ内に元からあるファイルはPermission denied で操作できません。また、変更点は tmpfs にのみ存在するため、コンテナ終了後は消えてしまいます。必要なデータやファイルがある場合は別途保存してください。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity shell -writable-tmpfs something.sif
+Singularity&gt; echo hogefuga &gt; /etc/testfile
+Singularity&gt; ls -al /etc/testfile
+-rw-rw-r-- 1 uXXXXX fugaku 9 Feb 14 04:50 /etc/testfile
+Singularity&gt; echo hogefuga &gt; /etc/os-release
+bash: /etc/os-release: Permission denied
+Singularity&gt; exit
+
+$ singularity shell something.sif
+Singularity&gt; ls -al /etc/hogefuga
+ls: cannot access &#39;/etc/hogefuga&#39;: No such file or directory
+</pre></div>
+</div>
+<p>永続的な書き込み可能領域を別途用意して、実行時に重ねあわせる –overlay 機能は tmpfs の代わりに別のイメージファイルを作成しておく必要があります。SIF と Overlay の両方に同一のファイルがある場合、overlay 側が優先されるため、イメージの一部改変に用いることもできます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># 1GBの overlay イメージを作成し、指定したディレクトリを予め作成しておく。
+# Creating a 1GB of image file with prepared directory inside.
+$ singularity overlay create --size 1024 --create-dir /usr/share/apps overlay.img
+
+# overlay イメージ内にデータを展開
+# Extracting data into Overlay image.
+$ singularity exec --overlay overlay.img core.sif tar xzf reference-data.tar.gz -C /usr/share/apps
+
+# overlay イメージをコンテナに重ね合わせて実行
+# Executeing container with the overlay image.
+$ singularity exec --overlay overlay.img core.sif ls -al /usr/share/apps
+</pre></div>
+</div>
+<p>overlay.img 内には書き込まれたデータが残るため、必要なデータを持ち運んだり分別管理に使うことができます。ただし、このイメージファイルの実体は ext3 でフォーマットされており、オーナー情報も生データで保持されるため、別システムで利用の際は注意が必要です。一方で AARCH64 で利用したイメージであっても x86_64 上の Singularity で利用することが可能です。また、loopback マウントして直接操作することもできますし、リサイズが必要な場合は、以下のように通常のパーティションと同じ扱いができます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ e2fsck -f overlay.img &amp;&amp; resize2fs overlay.img 4096M
+</pre></div>
+</div>
+<p>さらに singularity sif コマンドを用いると、SIF に埋め込んで1ファイルとしてしまうことも可能です。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity sif list ubuarm20.sif
+------------------------------------------------------------------------------
+ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
+------------------------------------------------------------------------------
+1    |1       |NONE    |65536-65574               |Def.FILE
+2    |1       |NONE    |131072-131169             |JSON.Generic
+3    |1       |NONE    |196608-26320896           |FS (Squashfs/*System/arm64)
+
+$ singularity sif add --datatype 4 --partfs 2 --parttype 4 --partarch 4 ubuarm20.sif overlay.img
+$ singularity sif list ubuarm20.sif
+------------------------------------------------------------------------------
+ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
+------------------------------------------------------------------------------
+1    |1       |NONE    |65536-65574               |Def.FILE
+2    |1       |NONE    |131072-131169             |JSON.Generic
+3    |1       |NONE    |196608-26320896           |FS (Squashfs/*System/arm64)
+4    |NONE    |NONE    |26320896-1100062720       |FS (Ext3/Overlay/arm64)
+</pre></div>
+</div>
+<p>各パラメータの意味については singularity sif add –help として確認してください。これにより、内容の変えられるイメージを運用することができます。また、あとからこの追加分を取り出したり、削除することもできます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity sif dump 4 ubuarm20.sif  &gt; ovl.img
+$ singularity sif del 4 ubuarm20.sif
+</pre></div>
+</div>
+<p>そしてこれらの操作はログインノード上でも行うことができるので、このためにジョブを投入する必要はありません。Overlay は SIF 同様、1ファイル内に I/O が閉じるため、特に小サイズのファイルが多数ある場合には、共有ファイルシステムのメタデータアクセス負荷の軽減に寄与します。積極的にご利用ください。</p>
+</section>
+<section id="mpi">
+<h2><span class="section-number">4.5. </span>About mpi parallel<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
+<p>Regarding mpi parallelism, there are no major problems up to parallelism within a node, but since there are various problems to be solved with multi-node parallelism, I will only describe it briefly here.</p>
+<section id="id7">
+<h3><span class="section-number">4.5.1. </span>Parallel within a node<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<p>In parallel within a node, the process manager launches the application directly, so processing does not extend outside the container. While launching the container with singularity, launch his mpi application with mpirun (mpiexec) etc. of course, it is assumed that the required mpi runtime is in the container. An example command looks like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec mpi-apps.sif mpirun -np 8 ~/myapps/hoge inputfile
+</pre></div>
+</div>
+<p>Only one container is started, and multiple processes run in it.</p>
+</section>
+<section id="id8">
+<h3><span class="section-number">4.5.2. </span>Multi-node parallel<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<p>When multi-node parallel is started in the same way as parallel in a node, the process manager is started to other nodes by ssh etc. but beyond that, the container isn’t started, so in most cases you should get an error. Therefore, we will deal with this by letting the mpi process manager include container startup. an example of how to start it is as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mpirun -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
+</pre></div>
+</div>
+<p>In other words, the application must be built with the same mpi installed on the host side and inside the container, or shared by -b etc., and it must be available inside and outside the container at runtime. Therefore, the user environment cannot be sufficiently separated by the container. In addition, since the number of containers for the number of processes is started, the overhead increases accordingly.</p>
+<p>Another issue is rdma support using interconnectors such as tofu. Singularity shares / dev with the host side, so the device itself is never invisible. However, the software stack needed to use the device must be in the container, and at the same time the application must be built to use it.</p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Singularity on FUGAKU</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. What is Singularity?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">2. Procedure for using Singularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">3. Creating an image</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">4. Runtime options and behavior</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id2">4.1. Incorporating the environment on the host side</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">4.2. Instantiation and interactive processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id6">4.3. Direct execution with specified repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overlay">4.4. Overlay 機能について</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mpi">4.5. About mpi parallel</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">5. Cooperation with job scheduler</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="Creating.html" title="previous chapter"><span class="section-number">3. </span>Creating an image</a></li>
+      <li>Next: <a href="Submitting.html" title="next chapter"><span class="section-number">5. </span>Cooperation with job scheduler</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021-, RIKEN R-CCS.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.2.6.
+    &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
+    </div>
+  </body>
+</html>

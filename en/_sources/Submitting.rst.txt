@@ -1,0 +1,79 @@
+ジョブスケジューラとの連携
+###########################
+
+既に見てきました通り、Singularity を用いたアプリケーションの実行にはコンテナであることを意識する必要があまりありません。特に %runscript を設定したイメージはそのままアプリケーションとして実行ができます。そのため、スケジューラを用いるジョブ実行に特別なことは不要です。他のコンテナ実装である Docker 等ではコンテナとホスト側で環境が分離され、コンテナの起動とその中でのアプリケーションの起動を別に考える必要があり、連携に困難が伴う事があります。
+
+また、実行時の処理や設定をイメージに埋め込むことができるということは、定型処理をジョブスクリプトやコマンドラインで記述せずに使えることを意味します。これによりスクリプトの記述ミスを防いだり、アプリを共有する際のサポートのし易さに貢献します。
+
+シンプルな実行
+***************
+
+以下のように、環境を構築したイメージを指定し、コマンドを実行する記述をジョブスクリプトに記述してサブミットします。
+
+::
+
+    $ cat job.sh
+    #!/bin/bash
+    #PJM -L "node=1"
+    #PJM -L "rscunit=rscunit_ft01"
+    #PJM -L "rscgrp=small"
+    #PJM -L "jobenv=singularity"
+    #PJM -L "elapse=15:00"
+
+    export OMP_NUM_THREADS=8
+    export MYCODE_CONFIG=/usr/share/MyApps/config.json
+    singularity exec ~/ubuntu2004.sif python3 ~/mycode/test.py
+
+    $ pjsub ./job.sh
+
+この例では、自身のホームディレクトリにあるイメージを用いて Ubuntu 20.04 環境のイメージでコンテナを起動し、その中で python3 で、やはりホームディレクトリにある mycode/test.py を実行しています。
+
+実行方法のイメージへの埋め込み
+******************************
+
+先述のイメージ作成で設定したように %environment や %runscript を設定して、多くの記述をイメージの中に取り込むことでジョブスクリプトをさらにシンプルにできます。例えば以下のような定義ファイルを用いて SIF イメージを作成したとします。
+
+::
+
+    Bootstrap: docker
+    From: ubuntu:focal
+
+    %environment
+        export OMP_NUM_THEADS=8
+        export MYCODE_CONFIG=/usr/share/MyApps/hoge.json
+
+    %runscript
+        cat $MYCODE_CONFIG
+        python3 /usr/share/MyApps/hoge.py $*
+    
+作成した SIF イメージを、hoge というファイルネームにして PATH を通したディレクトリへ保存しておきます。Singularity は SIF イメージの作成時にはデフォルトで実行属性を付けますが、念のため確認してください。ジョブスクリプトは以下のようにできます。
+
+::
+     
+    $ cat job.sh
+    #!/bin/bash
+    #PJM -L "node=1"
+    #PJM -L "rscunit=rscunit_ft01"
+    #PJM -L "rscgrp=small"
+    #PJM -L "jobenv=singularity"
+    #PJM -L "elapse=15:00"
+
+    hoge input.txt
+
+    $ pjsub ./job.sh
+
+ここまでやると、ユーザーは Singularity を使っていることすら意識せず、直接アプリケーションを利用しているように感じるのではないでしょうか。
+
+インタラクティブ実行
+*********************
+
+build のところで実施したように、インタラクティブジョブを実行すれば、その中でこれまで紹介してきた方法での操作が可能です。
+
+::
+
+    $ pjsub --interact -L "rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00,jobenv=singularity"
+    [INFO] PJM 0000 pjsub Job XXXXXXX submitted.
+    [INFO] PJM 0081 ..connected.
+    [INFO] PJM 0082 pjsub Interactive job XXXXXXX started.
+    [uXXXXX@b31-3208c ~]$ singularity shell ubuntu2004.sif 
+    Singularity> 

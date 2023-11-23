@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>3. Creating an image &#8212; Singularity on FUGAKU  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="4. Runtime options and behavior" href="Execution.html" />
+    <link rel="prev" title="2. Procedure for using Singularity" href="GettingStarted.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="id1">
+<h1><span class="section-number">3. </span>Creating an image<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
+<p>Learn how to create an SIF image for execution. There are some method depending on the setup you need, so choose the one that suits your situation.</p>
+<section id="sandbox">
+<h2><span class="section-number">3.1. </span>How to use sandbox<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
+<p>When building a system by directly editing an image, the actual work is done by manually. This is convenient for simple image creation and modification, but there are problems such as no work history.</p>
+<section id="id2">
+<h3><span class="section-number">3.1.1. </span>If you don’t need to start the container<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<p>As already mentioned in the previous section, if the user brings files etc. Into the sandbox or edits the settings etc.,those could be converted to SIF images. This is useful way if you just need to expand the application or reference data that has already been created. The image of the work procedure will be as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox ubi_py38 docker://registry.access.redhat.com/ubi8/python-38
+$ tar xvzf ~/application.tar.gz -C ubi_py38
+usr/local/bin/application
+usr/local/bin/subcommand
+usr/local/lib/libappr.so.1
+&lt;&lt;..snip..&gt;&gt;
+$ vi ubi_py38/usr/local/etc/application.config
+$ cp ~/tmp/config.json ubi_py38/usr/local/etc
+$ singularity build appl.sif ubi_py38
+INFO:    Starting build...
+INFO:    Creating SIF file...
+INFO:    Build complete: appl.sif
+$ singularity exec appl.sif /usr/local/bin/application
+</pre></div>
+</div>
+<ol class="arabic simple">
+<li><p>This gets the Redhat UBI image which has Python-3.8 installed and creates the sandbox image.</p></li>
+<li><p>The tarball of the application that has been expanded under /usr/local is expanded in sandbox.</p></li>
+<li><p>Editing the expanded file and bring in the configuration file from the outside.</p></li>
+<li><p>Generating an SIF image from a sandbox image that has been modified.</p></li>
+<li><p>Launching an application from the resulting SIF image.</p></li>
+</ol>
+<p>If you can build an environment just by importing the created file in this way, image creation will be completed very easily.</p>
+</section>
+<section id="id3">
+<h3><span class="section-number">3.1.2. </span>When starting a container and changing the system<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<p>All files and directories in sandbox that were originally owned by root were owned by the user. If you start the container with –writable option, it will start in the same state about the file owner and you can edit the system file with user privileges.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity shell --writable ubuntu2004
+Singularity&gt; touch /hogefuga
+Singularity&gt; ls -l /
+％％％％％％％％％％％％％％％％％
+Singularity&gt; exit
+$ singularity build from_executable.sif ubuntu2004
+</pre></div>
+</div>
+<p>例えばパッケージを追加インストールするなど、root 権限でイメージ内のシステムに変更を加えたい場合はどうすればよいでしょうか。これには –fakeroot オプションを –writable オプションと並行して使う必要があります。–fakeroot は Linux カーネルの機能を使い、コンテナ内のユーザー ID の名前空間と、ホスト OS におけるユーザー ID の名前空間とを分離し、コンテナ内の UID=0 即ち root をホスト側のユーザーにマッピングします。これにより、コンテナ内では root 権限を使いつつ、ホスト側からは一般ユーザー権限で作業しているように見せかけています。この時、ユーザーのホームディレクトリは /root にバインドされます。</p>
+<p>しかしここで「富岳」特有の問題があります。一般ユーザーのホームディレクトリは、以下のようなパーミッション設定になっていて、fugaku グループに所属していないとアクセスができません。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ls -dl /vol0004/mdt0/home
+drwxr-x--- 281 root fugaku 16384 Feb 23 17:50 /vol0004/mdt0/home
+$ ls -dl /vol0004/mdt0/home/uXXXXX
+drwx------ 8 uXXXXX fugaku 4096 Apr 25 18:45 /vol0004/mdt0/home/uXXXXXX
+</pre></div>
+</div>
+<p>一般ユーザーはサブグループとして fugaku グループに属しているものの、プライマリグループではありません。Linux カーネルの UID 名前空間分離機能の制約として、グループ権限はプライマリグループのみマッピングできるため、コンテナ内のユーザーは fugaku グループへのアクセス権限を持つことができません。そのためホームディレクトリのマウントができず、failed to mount /home/uXXXXX to /root: permission denied というエラーとなってしまいます。これを回避する方法は２つあります。</p>
+<ol class="arabic simple">
+<li><p>事前に newgrp fugaku として、プライマリグループを fugaku グループとしてから実行する。ただし、ファイルのオーナーやグループ権限は fugaku になってしまう。</p></li>
+<li><p>この問題に対処するため SingularityPRO 3.11-4 で追加された –no-setgroups オプションを利用する。</p></li>
+</ol>
+<p>これ以降では newgrp fugaku をした状態を仮定していきます。–fakeroot を付けた時、コンテナ内では root になっていることを確認してみます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ newgrp fugaku
+$ singularity shell --writable --fakeroot ubuntu2004
+WARNING: Skipping mount /etc/localtime [binds]: /etc/localtime doesn&#39;t exist in container
+Singularity&gt; whoami
+root
+Singularity&gt; pwd
+/root
+Singulraity&gt; ls -l /home
+total 0
+</pre></div>
+</div>
+<p>ただし、これにはもう一つ解決すべき問題があります。UID のマッピングはコンテナを起動しているノードでのみ有効です。つまりローカルストレージであれば、ファイルのオーナーもそれに追従することができますが、FEFS や NFS といった共有ファイルシステムでは、ストレージが ID の分離に対応できないため、ホームディレクトリ上にある sandbox イメージでの –fakeroot による環境構築作業ができません。「富岳」においてユーザーが利用できるローカルストレージとしては /worktmp があり、イメージのビルドにはこちらを使う必要がありますが、ここはコンピュートノードのメモリをストレージとして使えるようにしています。コンピュートノードはメモリを 32GB しか持ちませんので、サイズの大きなイメージの作成はできない可能性があります。ご注意ください。</p>
+<p>The flow of creating a sandbox image from the SIF image in the /worktmp directory, installing any package in the –fakeroot environment, and returning it to the SIF image should be as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ newgrp fugaku
+$ singularity build --sandbox /worktmp/ubuntu-sandbox ubuntu2004.sif
+$ singularity exec --fakeroot --writable /worktmp/ubuntu-sandbox apt install -y XXXXXXX 　# コマンド実行の例
+$ singularity shell --fakeroot --writable /worktmp/ubuntu-sandbox     # シェル環境でインタラクティブ作業する例
+Singularity&gt; apt install XXXXXXX
+Reading package lists... Done
+Building dependency tree
+&lt;&lt;..snip..&gt;&gt;
+0 upgraded, 3 newly installed, 0 to remove and 0 not upgraded.
+Singularity&gt; exit
+$ singularity build ~/from-sandbox.sif /worktmp/ubuntu-sandbox
+</pre></div>
+</div>
+<p>If you have less work, you can just execute the command with exec as in the example instead of shell.</p>
+</section>
+</section>
+<section id="id4">
+<h2><span class="section-number">3.2. </span>Custom image with definition file<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
+<p>All operation of image creation can be described in a definition file, for example, where to get the base image, bringing in files, set up the system inside the container, define the execution environment, etc. Especially to say, setting of execution environment well, it cloud greatly improve the convenience to use the container.</p>
+<p>The definition file used to be called as recipe file, and the name has not been decided, but now it is officially a definition file, and the extension is def. Please refer to the official documentation for more details, as this is just a simple usage.</p>
+<p>The definition file consists of four parts: header, construction, execution environment definition, and description. however, it works with at least the header.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat example.def
+Bootstrap: docker
+From: registry.access.redhat.com/ubi8/python-38
+
+%file
+    some_data.tar.gz  /
+
+%post
+    dnf install -y python3-libxml2
+    tar xzf /some_data.tar.gz -C /usr/share
+    rm -f /some_data.tar.gz
+    dnf clean all
+
+%environment
+    export LC_ALL=en_US.utf-8
+    export CONFIG_FILE=~/applicatin/etc/some.config
+
+%runscript
+    python $*
+
+%labels
+    Author Tarou.Fugaku@fugaku.org
+    Version v0.99.1
+</pre></div>
+</div>
+<p>This example describes the following:</p>
+<ol class="arabic simple">
+<li><p>Get the UBI8 Python3.8 environment with Bootstrap: and From: in the header and create a sandbox image in $TMPDIR.</p></li>
+<li><p>Import the data at hand (some_data.tar.gz)  to the root directory in the container.</p></li>
+<li><p>Start the container and install python3-libxml2 with dnf.</p></li>
+<li><p>Extract the data captured by %file to /usr/ share and delete the file and dnf cache.</p></li>
+<li><p>Set environment variables in %environment for starting the container.</p></li>
+<li><p>In %runscript, set the command to be executed when the image file is executed directly.</p></li>
+<li><p>Describe the container information in %labels</p></li>
+</ol>
+<p>As you can see, the %post process is done in sandbox, the dnf command can only be used with root privileges. Therefore, creating an image with this definition file requires root privileges or –fakeroot execution. Additionally, in FUGAKU, since the envieonment variable $TMPDIR is set to be the home directory, the build will fail as it is. then execute as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export TMPDIR=/worktmp
+$ newgrp fugaku
+$ singularity build --fakeroot ~/from_def.sif example.def
+</pre></div>
+</div>
+<p>The time required varies depending on the processing content, but from_def.sif should be completed. If you cannot change $TMPDIR, you can specify only the image expansion destination of singularity by setting $SINGULARITY_TMPDIR.</p>
+</section>
+<section id="id5">
+<h2><span class="section-number">3.3. </span>Embedding the execution configuration<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<p>In the definition file of the completed image, %runscript contains the command line 'python $'. This means that python would be started with the passed options at the same time as the container is started. In other words, the following two do the same thing.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec from_def.sif python hoge.py 1024
+$ ./from_def.sif hoge.py 1024
+</pre></div>
+</div>
+<p>For example, if the file name of the image is the same as the command of the application and it is placed in a directory in the PATH, you do not need to be aware that you are using a container. It is also possible to embed standard pre-processing, etc., and you can also use %environment to prevent troubles due to setting omissions. These are things that have been done in job scripts in a batch job environment, but by embedding them in an image with Singularity make job scripts simple to avoid mistakes.</p>
+<p>In addition to this, there are %app for bundling multiple applications and using them properly, and %help for writing a brief explanation. See documentation for details. If you manage this definition file in the repository, it will be clear how the calculation was performed with an image how it created, and it will be easy to reproduce even if you create the same environment again. However, if you use a tag like 'latest' in From: at the initial image building, the content will change each time you build the image. please note.</p>
+</section>
+<section id="id6">
+<h2><span class="section-number">3.4. </span>Creating an image by submitting a job<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
+<p>Let’s put these tasks into a job for FUGAKU. Create a simple script like the one below and submit the job.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat job.sh
+#!/bin/bash
+
+export TMPDIR=/worktmp
+</pre></div>
+</div>
+<dl class="simple">
+<dt>&lt;&lt;&lt;&lt;&lt;&lt;&lt; a8c8547d01c794e43ad82d939cd1ca0eff290d3f</dt><dd><p>newgrp fugaku
+singularity biuld –fakeroot create_job.sif example.def</p>
+</dd>
+</dl>
+<blockquote>
+<div><p>$ pjsub -L “rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00,jobenv=singularity” ./job.sh</p>
+</div></blockquote>
+<p>You can create an image in the same way.</p>
+</section>
+<section id="tcsds">
+<h2><span class="section-number">3.5. </span>Importing TCSDS into a container<a class="headerlink" href="#tcsds" title="Link to this heading">¶</a></h2>
+<p>FUGAKU has its own repository, language environment and library.You can embed a specific version of the runtime in the container image by getting the package from it and installing it.At the moment, only the rpm file is prepared, so it cannot be installed on Debian OS such as Ubuntu,so I will show you how to install it on RHEL and his derivative UBI etc.UBI is the subject here for the sake of simplicity, but please note that UBI may be difficult to use in practice because development packages etc. are only supplied in a limited way.</p>
+<p>The repository where TCSDS is located is /home/apps/singularity/tcs/, but documents are also included, so please refer to it as necessary. However, it is inconvenient if it is under /home to import it into the container, so we will devise it. first, prepare the following repository file.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat tcs.repo
+[tcs]
+enabled=1
+name=tcs
+gpgcheck=0
+baseurl=file:///opt/repo/tcs/
+</pre></div>
+</div>
+<p>Copy this file to /tmp. Generate sandbox image of RHEL type OS such as CentOS, UBI in /worktmp with sandbox. Temporarily create a directory named 'source'.</p>
+<p>Next, boot this image with –writable and –fakeroot. However, you still can’t access the local repository under /home.So we use -B to bind the repository directory to another directory in the container, here /opt/repo.When you use –writable, the destination directory will not be created automatically, so create it in advance.Then use the repo file to add the repository information inside the container.The repo file is saved in /tmp which is bound by default, so you don’t need to bring it in explicitly.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span> <span class="n">a8c8547d01c794e43ad82d939cd1ca0eff290d3f</span>
+</pre></div>
+</div>
+<blockquote>
+<div><p>$ singularity build –sandbox -f source docker://registry.access.redhat.com/ubi8/python-38
+&lt;&lt;中略&gt;&gt;</p>
+</div></blockquote>
+<dl>
+<dt>&gt;&gt;&gt;&gt;&gt;&gt;&gt; 62ce00750d4f1476503469d4cbdb64a4102adde1</dt><dd><p>$ mkdir source/opt/repo
+$ singularity shell –writable –fakeroot -B /home/apps/singularity:/opt/repo source
+Singularity&gt; dnf config-manager –add-repo=/tmp/tcs.repo
+Updating Subscription Management repositories.
+Unable to read consumer identity
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
+<p>Adding repo from: <a class="reference external" href="file:///tmp/tcs.repo">file:///tmp/tcs.repo</a></p>
+<p>Singularity&gt; dnf repolist
+Updating Subscription Management repositories.
+Unable to read consumer identity
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
+<p>repo id                                             repo name
+tcs                                                 tcs
+ubi-8-appstream                                     Red Hat Universal Base Image 8 (RPMs) - AppStream
+ubi-8-baseos                                        Red Hat Universal Base Image 8 (RPMs) - BaseOS
+ubi-8-codeready-builder                             Red Hat Universal Base Image 8 (RPMs) - CodeReady Builder</p>
+<p>Singularity&gt; dnf search FJSV
+Updating Subscription Management repositories.
+Unable to read consumer identity</p>
+<p>This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
+<p>Last metadata expiration check: 0:03:40 ago on Wed 20 Oct 2021 12:07:04 PM JST.
+===================================== Name Matched: FJSV =====================================
+FJSVxtclanga-common-TCSDS10R24.noarch : Generation Management for Language
+FJSVxtclanga-fc-compiler-CECA023.aarch64 : Fujitsu Fortran/C/C++ Compiler
+FJSVxtclanga-fc-compiler-doc-CMLN016.noarch : Fujitsu Fortran/C/C++ Compiler Online Documents
+&lt;&lt;..snip..&gt;&gt;</p>
+</dd>
+</dl>
+<p>Once you have confirmed that you can access the repository in this way, you can select and install the required packages as usual.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Singularity&gt; dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
+Updating Subscription Management repositories.
+Unable to read consumer identity
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+Last metadata expiration check: 0:07:29 ago on Wed 20 Oct 2021 12:07:04 PM JST.
+Dependencies resolved.
+===============================================================================================
+Package                                Architecture     Version         Repository       Size
+===============================================================================================
+Installing:
+    FJSVxtclanga-fc-compiler-CECA023    aarch64         4.4.0-03        tcs              88 M
+
+Transaction Summary
+===============================================================================================
+Install  1 Package
+
+Total size: 88 M
+Installed size: 516 M
+Downloading Packages:
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+    Preparing        :                                                                  1/1
+    Installing       : FJSVxtclanga-fc-compiler-CECA023-4.4.0-03.aarch64                1/1
+    Verifying        : FJSVxtclanga-fc-compiler-CECA023-4.4.0-03.aarch64                1/1
+Installed products updated.
+
+Installed:
+    FJSVxtclanga-fc-compiler-CECA023-4.4.0-03.aarch64
+Complete!
+$ dnf clean all
+</pre></div>
+</div>
+<p>It is recommended to clear the cache to make the image smaller.This is also recommended the case when installing packages from the repository with %post description in the definition file.Once you’ve installed the package or application, convert the sandbox image to a SIF image.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build -f ~/tcs-installed.sif source
+WARNING: &#39;nodev&#39; mount option set on /worktmp, it could be a source of failure during build process
+INFO:    Starting build...
+INFO:    Creating SIF file...
+INFO:    Build complete: /home/uXXXXX/tcs-installed.sif
+</pre></div>
+</div>
+<p>本ドキュメントの初版執筆当時の Singularity PRO では build 時に -B が使えなかったため、上記のように一度 sandbox を経由する必要があり、インストール済みの sandbox に対して定義ファイルによる処理や環境変数の埋め込みを以下のような定義ファイルで別途実施しました。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat from_source.def
+Bootstrap: localimage
+From: /worktmp/source
+%post
+&lt;&lt;..snip..&gt;&gt;
+$ singularity build -f ~/from_def_with_tcs.sif from_source.def
+</pre></div>
+</div>
+<p>2023年3月現在では、build 時にも -B オプションが使えるバージョンであるため、repo ファイルを %file で取り込ませたり、%post の中で直接ファイル生成するよう記述した定義ファイルで、手作業なしの構築が可能となっています。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat direct_build.def
+Bootstrap: docker
+From: registry.access.redhat.com/ubi8/python-38
+%file
+    tcs.repo /
+%post
+    dnf config-manager --add-repo=/tcs.repo
+    dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
+    dnf clean all
+    rm -f /tcs.repo
+&lt;&lt;後略&gt;&gt;
+$ singularity build -f -B /home/apps/singularity:/opt/repo ubi_tcs.sif direct_build.def
+</pre></div>
+</div>
+</section>
+<section id="id7">
+<h2><span class="section-number">3.6. </span>Image management by digital signature<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
+<p>Singularity SIF Images are managed in one file, so if you change the file name, you will not be able to trace who created the image and how. This can cause security issues as well as management trouble. Therefore, by adding a digital signature to the image by the creator, it is possible to prevent problems which image being altered or replaced.</p>
+<p>Digital signatures use the public key mechanism. First, calculate the hash value of the image, then encrypt it with the private key, and add (sign) it to the image. The public key should be managed in secure, separately from the image. The user who receives the image calculates the hash value of the image and decryption the signature cryptography with the creator’s public key to verify wheter it is exactly same image signed by the creator.</p>
+<section id="id8">
+<h3><span class="section-number">3.6.1. </span>Creating a key pair<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<p>まず、秘密鍵と公開鍵の組み合わせ(キーペア)を作成します。key コマンドを使います。途中キーストアへプッシュするかどうかを聞かれますが、ここでは n としておいてください。もし Y としてもキーペア自体はできあがっています。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity key newpair
+Enter your name (e.g., John Doe) : Fugaku Tarou
+Enter your email address (e.g., john.doe@example.com) : tarou@fugaku.org
+Enter optional comment (e.g., development keys) : Test Keypair
+Enter a passphrase :
+Retype your passphrase :
+Would you like to push it to the keystore? [Y,n] n
+Generating Entity and OpenPGP Key Pair... done
+NOT pushing newly created key to: https://keys.sylabs.io
+</pre></div>
+</div>
+<p>The keys can be checked with the list option as shown below for the public key and private key, and each is stored in ~/.singularity/sypgp.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity key list
+Public key listing (/home/rccs-aot/a0XXXX/.singularity/sypgp/pgp-public):
+0) U: Fugaku Tarou (Test Keypair) &lt;tarou@fugaku.org&gt;
+C: 2021-03-31 13:00:00 +0900 JST
+F: B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW
+L: 4096
+--------
+$ singularity key list --secret
+Public key listing (/home/rccs-aot/a0XXXX/.singularity/sypgp/pgp-secret):
+1) U: Fugaku Tarou (Test Keypair) &lt;tarou@fugaku.org&gt;
+C: 2021-03-31 13:00:00 +0900 JST
+F: B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW
+L: 4096
+--------
+$ ls -l ~/.singularity/sypgp
+-rw------- 1 a0XXXX a0XXXX  6625 Mar 31 13:00 pgp-public
+-rw------- 1 a0XXXX a0XXXX 14455 Mar 31 13:00 pgp-secret
+</pre></div>
+</div>
+<p>Let’s use this to sign the image and verify it.</p>
+</section>
+<section id="id9">
+<h3><span class="section-number">3.6.2. </span>How to sign and verify<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<p>To sign with singularity, use the 'sign' command. only for SIF images.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity sign ubuntu2004.sif
+Enter key passphrase :
+Signature created and applied to ulsb.sif
+</pre></div>
+</div>
+<p>If you have created multiple key pairs, you will be asked which one to use, but if you have one, just enter the passphrase which you entered at creating. The file size will be slightly larger by the amount of the signature. next, let’s verify the image.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity verify ubuntu2004.sif
+Verifying image: ubuntu2004.sif
+[LOCAL]   Signing entity: Fugaku Tarou (Test Keypair) &lt;tarou@fugaku.org&gt;
+[LOCAL]   Fingerprint: B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW
+Objects verified:
+ID  |GROUP   |LINK    |TYPE
+------------------------------------------------
+1   |1       |NONE    |Def.FILE
+2   |1       |NONE    |FS
+Container verified: ubuntu2004.sif
+</pre></div>
+</div>
+<p>If you give this image to someone, share your public key in another way. We sometimes use a service called a key store, but here we will try a method of converting keys into files and exchanging them. In this case, you output your public key to a file called public.asc and someone else imports it for verification.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity key export ./public.asc
+Public key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW correctly exported to file: ./public.asc
+
+$ singularity key import ./public.asc
+Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully added to the public keyring
+</pre></div>
+</div>
+<p>Using this imported public key, you can check whether the acquired image is as intended and whether it is exactly the same as when it was created. In addition, since multiple signatures can be applied, it is possible to add signatures from both the creator and the approver.</p>
+</section>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Singularity on FUGAKU</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. What is Singularity?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">2. Procedure for using Singularity</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">3. Creating an image</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sandbox">3.1. How to use sandbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">3.2. Custom image with definition file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">3.3. Embedding the execution configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id6">3.4. Creating an image by submitting a job</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tcsds">3.5. Importing TCSDS into a container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id7">3.6. Image management by digital signature</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">4. Runtime options and behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">5. Cooperation with job scheduler</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="GettingStarted.html" title="previous chapter"><span class="section-number">2. </span>Procedure for using Singularity</a></li>
+      <li>Next: <a href="Execution.html" title="next chapter"><span class="section-number">4. </span>Runtime options and behavior</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021-, RIKEN R-CCS.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.2.6.
+    &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
+    </div>
+  </body>
+</html>
