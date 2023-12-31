@@ -33,15 +33,15 @@
             
   <section id="singularity">
 <h1><span class="section-number">1. </span>What is Singularity?<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
-<p>Singularity is an open source Linux container implementation developed in 2015 to enhance the convenience of supercomputers at the Lawrence Berkeley national Laboratory in the united states.</p>
-<p>現在 Singularity は、開発者らが立ち上げた Sylabs 社と、独立したコミュニティにより個別に開発されています。後者の無償のものは Community Edition(CE)と呼ばれ、修正 BSD License（一部 Apache License のコードを含む）で Github 上に公開されています。これに対し、CE をベースに十分に検証された機能を搭載し、セキュリティ対応やバグフィックスのバックポート等の有償サービスを、主要な開発を行っている Sylabs 社が提供する Singularity PRO があります。「富岳」ではセキュリティおよびサポートの観点から、Singularity PRO を採用しています。</p>
+<p>Singularity is an open source Linux container implementation developed in 2015 to enhance the convenience of supercomputers at the Lawrence Berkeley National Laboratory in the United States.</p>
+<p>Currently Singularity is being developed separately by Sylabs, a company founded by the developers of the product, and by an independent community. The free of charge open source version is called the Community Edition (CE) and is published on Github under a modified BSD License (with some code under the Apache License). In contrast, there is Singularity PRO, which is based on CE with well-tested functionality and paid services such as security support and bug fix backports, provided by Sylabs, the main developer of the software. “FUGAKU” uses Singularity PRO for security and support reasons.</p>
 <p>With Singularity, of the system configuration required to execute an application, the parts other than the kernel can be independently configured and maintained, and can be integrated with the application, so if the environment has the same architecture, the entire execution environment can be carried.</p>
-<p>また、アプリケーションに必要なランタイムライブラリの更新頻度が高い場合や、多彩なアプリケーションを駆使する必要がある場合に、それぞれの要件を個別に整えたり切り替えたりすることを考えなくてよくなります。さらに古い実行環境を保存しておくことも容易なため、データの再検証などもやりやすくなります。</p>
-<p>他の実装と比べた Singularity の際立った特徴は以下の4点です。</p>
+<p>Also, if the runtime libraries required for an application are updated frequently or if you need to make full use of a wide variety of applications, you don’t have to think about setting up and switching between each requirement separately. It is also easier to keep old runtime environments, making it easier to revalidate data.</p>
+<p>There are 4 distinctive features of Singularity compared to other container implementations:</p>
 <ol class="arabic simple">
-<li><p>Since the image is created in a single file, managing container images is intuitive and easy.</p></li>
-<li><p>イメージを展開せず、単一ファイルのまま利用できるので、アプリケーション稼働時の共有ファイルシステムへの I/O を抑制できる。</p></li>
-<li><p>The ID and privileges of the started user are inherited inside the container. As a results, files, Hardware, and processes can be accessed as the same user.</p></li>
+<li><p>The image is created in a single file, which makes managing container images intuitive and easy.</p></li>
+<li><p>The image can be used as a single file without extraction and decompression resulting in the reduction of the I/O workload to the shared file system.</p></li>
+<li><p>The ID and privileges of the started user are inherited inside the container. As a result, files, Hardware, and processes can be accessed as the same user.</p></li>
 <li><p>Secure operation is possible because no root authority or daemon is involved when creating an image or executing a container.</p></li>
 </ol>
 <section id="id1">
@@ -54,12 +54,12 @@
 </ol>
 <p></p>
 <p>In addition to Singularity, there are many container implementations such as Podman, Docker, LXE, Shifter, CharieCloud, etc., each of which has its own characteristics. What they have in common is to switch under the root directory and run the application on a dedicated environment. The cut out of the user land (in short, below the root directory) is called an image, and the format and usage method differs depending on the container implementation.</p>
-<p>コンテナの中身は既存の OS の環境と変わりません。そのため、異なるアーキテクチャのアプリケーションを持ち込むことはできません。ARM で作成されたイメージを x86_64 の環境で動かしたり、その逆はできません。また、カーネルはホスト側の物を利用するため、カーネルのバージョンに強く依存したり、追加でドライバーの導入を求められるようなアプリケーションの稼働はできない可能性があります。</p>
+<p>The contents of the container are no different from the existing OS environment. Therefore, it is not possible to bring in applications of different architectures; it is not possible to run an image created on ARM on an x86_64 environment, or vice versa. Also, since the kernel is from the host, it may not be possible to run applications that are strongly dependent on the kernel version or that require additional drivers to be installed.</p>
 </section>
 <section id="id2">
 <h2><span class="section-number">1.2. </span>Image<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
 <p>To create an image of a container, deploy an OS environment separate from the host side in an empty file system, and build the required runtime and application environment. The resulting file system can be saved individually as a file or retrieved from a repository on the network.</p>
-<p>Singularity のイメージは SIF（Singularity Image Format）と呼ばれる形式の単一ファイルで構成されます。そのため、ユーザーはアプリケーションがランタイムごとインストールされたイメージを1ファイルで持つことができ、保存や転送などのハンドリングが直感的で容易です。</p>
+<p>An image of Singularity consists of a single file in a format called SIF (Singularity Image Format). Therefore, the user can have an image in which the application is installed for each runtime in one file, and handling such as saving and transferring is intuitive and easy.</p>
 <p>On the other hand, Singularity does not require that the image be created in SIF format. You can also run container images saved in other formats directly.</p>
 </section>
 <section id="id3">
@@ -72,7 +72,7 @@
 <li><p>Make sure that the preset commands for the image are executed as soon as the container is started.</p></li>
 <li><p>Start only the container and issue a command to the specified container from the outside.</p></li>
 </ol>
-<p>「富岳」をはじめとしたバッチ処理環境では、検証などを除けば２番目と３番目での実行方法をとることになるのでしょう。４番目は多数のデータの処理に同じ環境を何度も繰り返し使う場合や、 Jupyter Notebook 等のサービスを立ち上げて外部からそれにアクセスするような使い方となります。</p>
+<p>In a batch processing environment such as “FUGAKU”, the second and third execution methods will be used except for verification purpose. The fourth is when the same environment is used over and over again to process a large amount of data, or when a service such as Jupyter Notebook is launched and accessed from the outside</p>
 </section>
 </section>
 

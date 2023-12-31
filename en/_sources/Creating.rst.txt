@@ -181,12 +181,8 @@ Singularity のイメージ作成は定義ファイルに全てを記載して�
     #!/bin/bash
 
     export TMPDIR=/worktmp
-<<<<<<< a8c8547d01c794e43ad82d939cd1ca0eff290d3f
     newgrp fugaku
     singularity biuld --fakeroot create_job.sif example.def
-=======
-    singularity build --fakeroot create_job.sif example.def
->>>>>>> 62ce00750d4f1476503469d4cbdb64a4102adde1
 
     $ pjsub -L "rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00,jobenv=singularity" ./job.sh
 
@@ -214,13 +210,8 @@ TCSDS の置かれているリポジトリは /home/apps/singularity/tcs/ にな
 
 ::
 
-<<<<<<< a8c8547d01c794e43ad82d939cd1ca0eff290d3f
     $ singularity build --sandbox -f source docker://registry.access.redhat.com/ubi8/python-38
-    <<中略>>
-=======
-    $ singularity build -f source docker://registry.access.redhat.com/ubi8/python-38
     <<..snip..>>
->>>>>>> 62ce00750d4f1476503469d4cbdb64a4102adde1
     $ mkdir source/opt/repo
     $ singularity shell --writable --fakeroot -B /home/apps/singularity:/opt/repo source
     Singularity> dnf config-manager --add-repo=/tmp/tcs.repo
@@ -329,7 +320,7 @@ TCSDS の置かれているリポジトリは /home/apps/singularity/tcs/ にな
         dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
         dnf clean all
         rm -f /tcs.repo
-    <<後略>>
+    <<..snip..>>
     $ singularity build -f -B /home/apps/singularity:/opt/repo ubi_tcs.sif direct_build.def
 
 

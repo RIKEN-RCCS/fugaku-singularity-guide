@@ -86,7 +86,7 @@ $ cat job.sh
 </section>
 <section id="id5">
 <h2><span class="section-number">4.2. </span>Instantiation and interactive processing<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
-<p>So far, we have integrated the launch of the container and the launch of the application, and used it so that the user can launch the application directly without being aware of the container. However, with this usage, when the started application is closed, the container will be closed at the same time. Of course, you can restart it, but even if it is a lightweight container implementation, if you repeat it many times, the overhead will be wasted. Also, can singularity not be used for service operations such as web servers? To accommodate these uses, singularity has a feature called instantiation that allows you to maintain containers.</p>
+<p>So far, we have integrated the launch of the container and the launch of the application and used it so that the user can launch the application directly without being aware of the container. However, with this usage, when the started application is closed, the container will be closed at the same time. Of course, you can restart it, but even if it is a lightweight container implementation, if you repeat it many times, the overhead will be wasted. Also, can singularity not be used for service operations such as web servers? To accommodate these uses, singularity has a feature called instantiation that allows you to maintain containers.</p>
 <p>Start and instantiate only the container as shown below. The last string is the instance name, which must be a name that is not covered by what is already running. Make sure it is started correctly with the list subcommand.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity instance start ubuntu2004.sif Focal
 $ singularity instance list
@@ -98,14 +98,14 @@ Focal            12016          /home/uXXXXX/ubuntu2004.sif
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec instance://Focal cat /etc/os-release
 </pre></div>
 </div>
-<p>1インスタンスに対して複数のアプリケーションを投入して実行することも可能です。例えばとあるディレクトリに存在する膨大な数のファイルに対して同一処理をするような場合、</p>
+<p>Multiple applications can be submitted and executed on a single instance. For example, suppose you need to perform the same process on a huge number of files in a certain directory.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>for data in data.*
 do
     singularity exec jammy.sif appl ${data}
 done
 </pre></div>
 </div>
-<p>のような処理をするよりも、以下のようにする方が、一般的にはコンテナ起動のオーバーヘッドを削減でき、スループットを上げることができます。</p>
+<p>While it is tempting to write such a script, the following will generally reduce the container launch overhead and thus increase throughput.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>singularity instance start jammy jammy.sif
 for data in data.*
 do
@@ -113,8 +113,8 @@ do
 done
 </pre></div>
 </div>
-<p>インスタンスは複数立ち上げておくことができるので、異なる環境での処理を1ジョブ内で行うことができます。一般的にはインスタンス機能はデータベースやウェブサーバー等、ノード内になんらかのサービスを起動させておく場合に利用されています。インスタンス起動時に自動的に行う処理を埋め込む場合、ビルド時の定義ファイルで %runscript の代わりに %startscript に記述します。</p>
-<p>インスタンスを止めるには stop オプションを使います。</p>
+<p>Since you can start multiple instances simultaneously, you can perform different operations in different environments in single job.</p>
+<p>To terminate running instance, use stop option.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity instance stop Focal
 </pre></div>
 </div>
@@ -152,13 +152,13 @@ ID_LIKE=debian
 PRETTY_NAME=&quot;Ubuntu 20.04.3 LTS&quot;
 </pre></div>
 </div>
-<p>If there is an update on the repository side, get it, recreate the sif image, and then execute it. therefore, this execution method is not suitable when it is necessary to maintain an execution environment with a proven track record. It is recommend that you always use it only when you want to import and use the latest version of the repository.</p>
-<p>キャッシュの情報を見たり、クリアすることもできます。</p>
+<p>If there is an update on the repository side, get it, recreate the sif image, and then execute it. This execution method is not suitable when it is necessary to maintain an execution environment with a proven track record. It is recommended that you always use it only when you want to import and use the latest version of the repository.</p>
+<p>You can also view cache information and clear cache files.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity cache list -v
 NAME                     DATE CREATED           SIZE             TYPE
 061be60b872e3a155a2364   2021-10-28 22:14:15    0.34 KiB         blob
 2d5d59c100e7ad4ac35a22   2021-11-03 13:54:19    78.57 MiB        blob
-&lt;&lt;中略&gt;&gt;
+&lt;&lt;..snip..&gt;&gt;
 sha256.9a6ee1f8fdecb21   2023-02-22 17:14:02    2.65 MiB         library
 626ffe58f6e7566e00254b   2021-10-28 22:14:18    25.15 MiB        oci-tmp
 
@@ -168,16 +168,16 @@ Total space used: 720.67 MiB
 $ singularity cache clean
 </pre></div>
 </div>
-<p>これらのキャッシュは、ここで触れている実行時だけでなく build/pull の際にも利用されます。</p>
+<p>These caches are used not only at runtime, but also at build/pull time.</p>
 </section>
 <section id="overlay">
-<h2><span class="section-number">4.4. </span>Overlay 機能について<a class="headerlink" href="#overlay" title="Link to this heading">¶</a></h2>
-<p>SIF イメージの実体は SquashFS(tar+gzip)なので、実行時はリードオンリーとなります。しかし、一時的にファイルをイメージ内に置きたい場合や、部分的に異なっているだけのイメージが必要な時、全てを含んだイメージを複数持つのは無駄なので差分だけ持ちたいといったケースがあります。これには Linux カーネルの持つ OverlayFS という機能を使い、複数のファイルシステムを重ね合わせる事で実現します。Singularity には二つの方法が用意されています。</p>
+<h2><span class="section-number">4.4. </span>Overlay option<a class="headerlink" href="#overlay" title="Link to this heading">¶</a></h2>
+<p>The SIF image entity is SquashFS(almost tar+gzip), so it is read-only at runtime. However, there are cases when you want to temporarily place files in the image, or when you need an image that is only partially different, or when you want to have only the differences because having multiple images that contain everything is a waste of capacity. Singularity provides 2 solutions.</p>
 <ol class="arabic simple">
-<li><p>一時的な書き込み可能領域を使う –writable-tmpfs オプション。文字通りメモリ由来の tmpfs を重ね合わせます。</p></li>
-<li><p>永続的な書き込み可能領域を別途用意して、実行時に重ねあわせる -—overlay オプション。</p></li>
+<li><p>The –writable-tmpfs option that makes memory-derived tmpfs temporarily writable by superimposing them on the read-only image.</p></li>
+<li><p>The –overlay option that prepares a separate persistent writable file and overlays it at runtime.</p></li>
 </ol>
-<p>writable-tmpfs オプションを使うと、tmpfs を既存イメージに重ね合わせるので、任意の場所に新たなファイルやディレクトリが作成できます。ただし、イメージ内に元からあるファイルはPermission denied で操作できません。また、変更点は tmpfs にのみ存在するため、コンテナ終了後は消えてしまいます。必要なデータやファイルがある場合は別途保存してください。</p>
+<p>The writable-tmpfs option superimposes tmpfs on the existing image, so new files and directories can be created at any location in container. However, files originally in the image cannot be manipulated with causing the error of Permission denied. Also, the changes will only exist in tmpfs, so they will disappear after the container is terminated. If you have necessary data or files, save them separately before exiting the container.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity shell -writable-tmpfs something.sif
 Singularity&gt; echo hogefuga &gt; /etc/testfile
 Singularity&gt; ls -al /etc/testfile
@@ -191,7 +191,7 @@ Singularity&gt; ls -al /etc/hogefuga
 ls: cannot access &#39;/etc/hogefuga&#39;: No such file or directory
 </pre></div>
 </div>
-<p>永続的な書き込み可能領域を別途用意して、実行時に重ねあわせる –overlay 機能は tmpfs の代わりに別のイメージファイルを作成しておく必要があります。SIF と Overlay の両方に同一のファイルがある場合、overlay 側が優先されるため、イメージの一部改変に用いることもできます。</p>
+<p>The –overlay function, which overlays a separately prepared persistent writable file at runtime, requires a separate image file to be created instead of tmpfs. If the same file exists in both SIF and Overlay, the overlay side has priority. This means that it enables partial modification of the image.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span># 1GBの overlay イメージを作成し、指定したディレクトリを予め作成しておく。
 # Creating a 1GB of image file with prepared directory inside.
 $ singularity overlay create --size 1024 --create-dir /usr/share/apps overlay.img
@@ -205,11 +205,11 @@ $ singularity exec --overlay overlay.img core.sif tar xzf reference-data.tar.gz 
 $ singularity exec --overlay overlay.img core.sif ls -al /usr/share/apps
 </pre></div>
 </div>
-<p>overlay.img 内には書き込まれたデータが残るため、必要なデータを持ち運んだり分別管理に使うことができます。ただし、このイメージファイルの実体は ext3 でフォーマットされており、オーナー情報も生データで保持されるため、別システムで利用の際は注意が必要です。一方で AARCH64 で利用したイメージであっても x86_64 上の Singularity で利用することが可能です。また、loopback マウントして直接操作することもできますし、リサイズが必要な場合は、以下のように通常のパーティションと同じ扱いができます。</p>
+<p>The written data remains in overlay.img and can be used to carry and segregate your data. However, please note that the image file is formatted in ext3 and the owner information is also retained as well, so be careful when using it on a different system. On the other hand, the image file can be used on both of AARCH64 and x86_64 by singularity. It is also possible to directly manipulate the image by mounting it as loopback, or to resize it in the same way as a normal partition, as shown below.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ e2fsck -f overlay.img &amp;&amp; resize2fs overlay.img 4096M
 </pre></div>
 </div>
-<p>さらに singularity sif コマンドを用いると、SIF に埋め込んで1ファイルとしてしまうことも可能です。</p>
+<p>In addition, you can integrate the overlay image into a SIF image to be a single file by means of singularity sif command.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity sif list ubuarm20.sif
 ------------------------------------------------------------------------------
 ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
@@ -229,12 +229,12 @@ ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
 4    |NONE    |NONE    |26320896-1100062720       |FS (Ext3/Overlay/arm64)
 </pre></div>
 </div>
-<p>各パラメータの意味については singularity sif add –help として確認してください。これにより、内容の変えられるイメージを運用することができます。また、あとからこの追加分を取り出したり、削除することもできます。</p>
+<p>To see the meaning of each parameter, please refer to the manual which you can see by the command singularity sif add –help. This function allows for the operation of images whose contents can be modified. Later, these additions can be taken out or deleted.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity sif dump 4 ubuarm20.sif  &gt; ovl.img
 $ singularity sif del 4 ubuarm20.sif
 </pre></div>
 </div>
-<p>そしてこれらの操作はログインノード上でも行うことができるので、このためにジョブを投入する必要はありません。Overlay は SIF 同様、1ファイル内に I/O が閉じるため、特に小サイズのファイルが多数ある場合には、共有ファイルシステムのメタデータアクセス負荷の軽減に寄与します。積極的にご利用ください。</p>
+<p>These operations can also be performed on the login node, so there is no need to submit a job for this purpose. Overlay also contributes to reducing the metadata access load on the shared file system, especially when there are many small files, since I/O is completed within a single file.</p>
 </section>
 <section id="mpi">
 <h2><span class="section-number">4.5. </span>About mpi parallel<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
@@ -284,7 +284,7 @@ $ singularity sif del 4 ubuarm20.sif
 <li class="toctree-l2"><a class="reference internal" href="#id2">4.1. Incorporating the environment on the host side</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id5">4.2. Instantiation and interactive processing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id6">4.3. Direct execution with specified repository</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#overlay">4.4. Overlay 機能について</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overlay">4.4. Overlay option</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#mpi">4.5. About mpi parallel</a></li>
 </ul>
 </li>

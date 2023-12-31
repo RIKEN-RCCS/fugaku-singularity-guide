@@ -33,9 +33,9 @@
             
   <section id="id1">
 <h1><span class="section-number">3. </span>Creating an image<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
-<p>Learn how to create an SIF image for execution. There are some method depending on the setup you need, so choose the one that suits your situation.</p>
+<p>Learn how to create an SIF image for execution. There are some methods depending on the setup you need, so choose the one that suits your situation.</p>
 <section id="sandbox">
-<h2><span class="section-number">3.1. </span>How to use sandbox<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">3.1. </span>How to use a sandbox<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
 <p>When building a system by directly editing an image, the actual work is done by manually. This is convenient for simple image creation and modification, but there are problems such as no work history.</p>
 <section id="id2">
 <h3><span class="section-number">3.1.1. </span>If you don’t need to start the container<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
@@ -75,20 +75,20 @@ Singularity&gt; exit
 $ singularity build from_executable.sif ubuntu2004
 </pre></div>
 </div>
-<p>例えばパッケージを追加インストールするなど、root 権限でイメージ内のシステムに変更を加えたい場合はどうすればよいでしょうか。これには –fakeroot オプションを –writable オプションと並行して使う必要があります。–fakeroot は Linux カーネルの機能を使い、コンテナ内のユーザー ID の名前空間と、ホスト OS におけるユーザー ID の名前空間とを分離し、コンテナ内の UID=0 即ち root をホスト側のユーザーにマッピングします。これにより、コンテナ内では root 権限を使いつつ、ホスト側からは一般ユーザー権限で作業しているように見せかけています。この時、ユーザーのホームディレクトリは /root にバインドされます。</p>
-<p>しかしここで「富岳」特有の問題があります。一般ユーザーのホームディレクトリは、以下のようなパーミッション設定になっていて、fugaku グループに所属していないとアクセスができません。</p>
+<p>When you want to make changes to the system in the image as root, for example by installing additional packages, this requires the –fakeroot option to be used in conjunction with the –writable option. –fakeroot, separates the user ID namespace in the container from that in the host OS, mapping UID=0, or root, in the container to tue normal user on the host.  This makes it look as if the user is working with normal user privileges from the host environment,  while using root privileges in the container. At this time, the user’s home directory is bound to /root.</p>
+<p>However, there is a problem &quot;FUGAKU&quot; specific here. The home directories of normal users have the following permission settings, and cannot be accessed unless users belong to the fugaku group.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ls -dl /vol0004/mdt0/home
 drwxr-x--- 281 root fugaku 16384 Feb 23 17:50 /vol0004/mdt0/home
 $ ls -dl /vol0004/mdt0/home/uXXXXX
 drwx------ 8 uXXXXX fugaku 4096 Apr 25 18:45 /vol0004/mdt0/home/uXXXXXX
 </pre></div>
 </div>
-<p>一般ユーザーはサブグループとして fugaku グループに属しているものの、プライマリグループではありません。Linux カーネルの UID 名前空間分離機能の制約として、グループ権限はプライマリグループのみマッピングできるため、コンテナ内のユーザーは fugaku グループへのアクセス権限を持つことができません。そのためホームディレクトリのマウントができず、failed to mount /home/uXXXXX to /root: permission denied というエラーとなってしまいます。これを回避する方法は２つあります。</p>
+<p>All normal users belong to the fugaku group as a subgroup, but not the primary group.Because of the limitations of the Linux kernel’s UID namespace separation feature, group privileges can only be mapped to the primary group, so users in containers cannot have access to the fugaku group, since group privileges can only be mapped to the primary group. Therefore, the home directory cannot be mounted, resulting in the error “failed to mount /home/uXXXXX to /root: permission denied. There are two ways to work around this.</p>
 <ol class="arabic simple">
-<li><p>事前に newgrp fugaku として、プライマリグループを fugaku グループとしてから実行する。ただし、ファイルのオーナーやグループ権限は fugaku になってしまう。</p></li>
-<li><p>この問題に対処するため SingularityPRO 3.11-4 で追加された –no-setgroups オプションを利用する。</p></li>
+<li><p>Before executing singularity build command, change the primary group to the fugaku group by using newgrp fugaku. However, the file owner and group permissions will be set to fugaku group.</p></li>
+<li><p>Use the –no-setgroups option added in SingularityPRO 3.11-4 to address this issue.</p></li>
 </ol>
-<p>これ以降では newgrp fugaku をした状態を仮定していきます。–fakeroot を付けた時、コンテナ内では root になっていることを確認してみます。</p>
+<p>From now on, we will assume that you have done newgrp fugaku. Using –fakeroot to make sure that you are root inside the container.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ newgrp fugaku
 $ singularity shell --writable --fakeroot ubuntu2004
 WARNING: Skipping mount /etc/localtime [binds]: /etc/localtime doesn&#39;t exist in container
@@ -100,7 +100,7 @@ Singulraity&gt; ls -l /home
 total 0
 </pre></div>
 </div>
-<p>ただし、これにはもう一つ解決すべき問題があります。UID のマッピングはコンテナを起動しているノードでのみ有効です。つまりローカルストレージであれば、ファイルのオーナーもそれに追従することができますが、FEFS や NFS といった共有ファイルシステムでは、ストレージが ID の分離に対応できないため、ホームディレクトリ上にある sandbox イメージでの –fakeroot による環境構築作業ができません。「富岳」においてユーザーが利用できるローカルストレージとしては /worktmp があり、イメージのビルドにはこちらを使う必要がありますが、ここはコンピュートノードのメモリをストレージとして使えるようにしています。コンピュートノードはメモリを 32GB しか持ちませんので、サイズの大きなイメージの作成はできない可能性があります。ご注意ください。</p>
+<p>However, there is another problem to be solved. The isolated ID is valid only on the node starting the container. So with local storage, file owners can follow suit, but with shared file systems such as FEFS and NFS, storage can’t handle identity isolation. Therefore, the sandbox image in the home directory cannot be used with –fakeroot and the environment construction does not work properly. There is /worktmp as a local storage available to normal user in FUGAKU environment, but this is shared from the memory of the compute node as storage. However, please note that compute nodes have only 32GB of memory, so it is not possible to create a huge image.</p>
 <p>The flow of creating a sandbox image from the SIF image in the /worktmp directory, installing any package in the –fakeroot environment, and returning it to the SIF image should be as follows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ newgrp fugaku
 $ singularity build --sandbox /worktmp/ubuntu-sandbox ubuntu2004.sif
@@ -120,7 +120,7 @@ $ singularity build ~/from-sandbox.sif /worktmp/ubuntu-sandbox
 </section>
 <section id="id4">
 <h2><span class="section-number">3.2. </span>Custom image with definition file<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
-<p>All operation of image creation can be described in a definition file, for example, where to get the base image, bringing in files, set up the system inside the container, define the execution environment, etc. Especially to say, setting of execution environment well, it cloud greatly improve the convenience to use the container.</p>
+<p>All operation of image creation can be described in a definition file, for example, where to get the base image, bringing in files, set up the system inside the container, define the execution environment, etc. Properly setting the execution environment cloud greatly improve the convenience to use the container.</p>
 <p>The definition file used to be called as recipe file, and the name has not been decided, but now it is officially a definition file, and the extension is def. Please refer to the official documentation for more details, as this is just a simple usage.</p>
 <p>The definition file consists of four parts: header, construction, execution environment definition, and description. however, it works with at least the header.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat example.def
@@ -158,7 +158,7 @@ From: registry.access.redhat.com/ubi8/python-38
 <li><p>In %runscript, set the command to be executed when the image file is executed directly.</p></li>
 <li><p>Describe the container information in %labels</p></li>
 </ol>
-<p>As you can see, the %post process is done in sandbox, the dnf command can only be used with root privileges. Therefore, creating an image with this definition file requires root privileges or –fakeroot execution. Additionally, in FUGAKU, since the envieonment variable $TMPDIR is set to be the home directory, the build will fail as it is. then execute as follows.</p>
+<p>As you can see, the %post process is done in sandbox, the dnf command can only be used with root privileges. Therefore, creating an image with this definition file requires root privileges or –fakeroot execution. Additionally, in FUGAKU, since the environment variable $TMPDIR is set to be the home directory, the build will fail as it is. then execute as follows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export TMPDIR=/worktmp
 $ newgrp fugaku
 $ singularity build --fakeroot ~/from_def.sif example.def
@@ -174,7 +174,7 @@ $ ./from_def.sif hoge.py 1024
 </pre></div>
 </div>
 <p>For example, if the file name of the image is the same as the command of the application and it is placed in a directory in the PATH, you do not need to be aware that you are using a container. It is also possible to embed standard pre-processing, etc., and you can also use %environment to prevent troubles due to setting omissions. These are things that have been done in job scripts in a batch job environment, but by embedding them in an image with Singularity make job scripts simple to avoid mistakes.</p>
-<p>In addition to this, there are %app for bundling multiple applications and using them properly, and %help for writing a brief explanation. See documentation for details. If you manage this definition file in the repository, it will be clear how the calculation was performed with an image how it created, and it will be easy to reproduce even if you create the same environment again. However, if you use a tag like 'latest' in From: at the initial image building, the content will change each time you build the image. please note.</p>
+<p>In addition to this, there are %app for bundling multiple applications and using them properly, and %help for writing a brief explanation. See documentation for details. If you manage this definition file in the repository, it will be clear how the calculation was performed with an image how it created, and it will be easy to reproduce even if you create the same environment again. However, if you use a tag like 'latest' in From: at the initial image building, the content will change each time you build the image.</p>
 </section>
 <section id="id6">
 <h2><span class="section-number">3.4. </span>Creating an image by submitting a job<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
@@ -183,21 +183,17 @@ $ ./from_def.sif hoge.py 1024
 #!/bin/bash
 
 export TMPDIR=/worktmp
+newgrp fugaku
+singularity biuld --fakeroot create_job.sif example.def
+
+$ pjsub -L &quot;rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00,jobenv=singularity&quot; ./job.sh
 </pre></div>
 </div>
-<dl class="simple">
-<dt>&lt;&lt;&lt;&lt;&lt;&lt;&lt; a8c8547d01c794e43ad82d939cd1ca0eff290d3f</dt><dd><p>newgrp fugaku
-singularity biuld –fakeroot create_job.sif example.def</p>
-</dd>
-</dl>
-<blockquote>
-<div><p>$ pjsub -L “rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00,jobenv=singularity” ./job.sh</p>
-</div></blockquote>
 <p>You can create an image in the same way.</p>
 </section>
 <section id="tcsds">
 <h2><span class="section-number">3.5. </span>Importing TCSDS into a container<a class="headerlink" href="#tcsds" title="Link to this heading">¶</a></h2>
-<p>FUGAKU has its own repository, language environment and library.You can embed a specific version of the runtime in the container image by getting the package from it and installing it.At the moment, only the rpm file is prepared, so it cannot be installed on Debian OS such as Ubuntu,so I will show you how to install it on RHEL and his derivative UBI etc.UBI is the subject here for the sake of simplicity, but please note that UBI may be difficult to use in practice because development packages etc. are only supplied in a limited way.</p>
+<p>FUGAKU has its own repository, language environment and library.You can embed a specific version of the runtime in the container image by getting the package from it and installing it.At the moment, only the rpm file is prepared, so it cannot be installed on Debian OS such as Ubuntu,so we will show you how to install it on RHEL and its derivative UBI etc.UBI is the subject here for the sake of simplicity, but please note that UBI may be difficult to use in practice because development packages etc. are only supplied in a limited way.</p>
 <p>The repository where TCSDS is located is /home/apps/singularity/tcs/, but documents are also included, so please refer to it as necessary. However, it is inconvenient if it is under /home to import it into the container, so we will devise it. first, prepare the following repository file.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat tcs.repo
 [tcs]
@@ -208,43 +204,43 @@ baseurl=file:///opt/repo/tcs/
 </pre></div>
 </div>
 <p>Copy this file to /tmp. Generate sandbox image of RHEL type OS such as CentOS, UBI in /worktmp with sandbox. Temporarily create a directory named 'source'.</p>
-<p>Next, boot this image with –writable and –fakeroot. However, you still can’t access the local repository under /home.So we use -B to bind the repository directory to another directory in the container, here /opt/repo.When you use –writable, the destination directory will not be created automatically, so create it in advance.Then use the repo file to add the repository information inside the container.The repo file is saved in /tmp which is bound by default, so you don’t need to bring it in explicitly.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span> <span class="n">a8c8547d01c794e43ad82d939cd1ca0eff290d3f</span>
-</pre></div>
-</div>
-<blockquote>
-<div><p>$ singularity build –sandbox -f source docker://registry.access.redhat.com/ubi8/python-38
-&lt;&lt;中略&gt;&gt;</p>
-</div></blockquote>
-<dl>
-<dt>&gt;&gt;&gt;&gt;&gt;&gt;&gt; 62ce00750d4f1476503469d4cbdb64a4102adde1</dt><dd><p>$ mkdir source/opt/repo
-$ singularity shell –writable –fakeroot -B /home/apps/singularity:/opt/repo source
-Singularity&gt; dnf config-manager –add-repo=/tmp/tcs.repo
+<p>Next, boot this image with –writable and –fakeroot. However, you still can’t access the local repository under /home. So we use -B to bind the repository directory to another directory in the container, here /opt/repo.When you use –writable, the destination directory will not be created automatically, so create it in advance.Then use the repo file to add the repository information inside the container.The repo file is saved in /tmp which is bound by default, so you don’t need to bring it in explicitly.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox -f source docker://registry.access.redhat.com/ubi8/python-38
+&lt;&lt;..snip..&gt;&gt;
+$ mkdir source/opt/repo
+$ singularity shell --writable --fakeroot -B /home/apps/singularity:/opt/repo source
+Singularity&gt; dnf config-manager --add-repo=/tmp/tcs.repo
 Updating Subscription Management repositories.
 Unable to read consumer identity
-This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
-<p>Adding repo from: <a class="reference external" href="file:///tmp/tcs.repo">file:///tmp/tcs.repo</a></p>
-<p>Singularity&gt; dnf repolist
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+Adding repo from: file:///tmp/tcs.repo
+
+Singularity&gt; dnf repolist
 Updating Subscription Management repositories.
 Unable to read consumer identity
-This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
-<p>repo id                                             repo name
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+repo id                                             repo name
 tcs                                                 tcs
 ubi-8-appstream                                     Red Hat Universal Base Image 8 (RPMs) - AppStream
 ubi-8-baseos                                        Red Hat Universal Base Image 8 (RPMs) - BaseOS
-ubi-8-codeready-builder                             Red Hat Universal Base Image 8 (RPMs) - CodeReady Builder</p>
-<p>Singularity&gt; dnf search FJSV
+ubi-8-codeready-builder                             Red Hat Universal Base Image 8 (RPMs) - CodeReady Builder
+
+Singularity&gt; dnf search FJSV
 Updating Subscription Management repositories.
-Unable to read consumer identity</p>
-<p>This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
-<p>Last metadata expiration check: 0:03:40 ago on Wed 20 Oct 2021 12:07:04 PM JST.
+Unable to read consumer identity
+
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+Last metadata expiration check: 0:03:40 ago on Wed 20 Oct 2021 12:07:04 PM JST.
 ===================================== Name Matched: FJSV =====================================
 FJSVxtclanga-common-TCSDS10R24.noarch : Generation Management for Language
 FJSVxtclanga-fc-compiler-CECA023.aarch64 : Fujitsu Fortran/C/C++ Compiler
 FJSVxtclanga-fc-compiler-doc-CMLN016.noarch : Fujitsu Fortran/C/C++ Compiler Online Documents
-&lt;&lt;..snip..&gt;&gt;</p>
-</dd>
-</dl>
+&lt;&lt;..snip..&gt;&gt;
+</pre></div>
+</div>
 <p>Once you have confirmed that you can access the repository in this way, you can select and install the required packages as usual.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Singularity&gt; dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
 Updating Subscription Management repositories.
@@ -290,7 +286,7 @@ INFO:    Creating SIF file...
 INFO:    Build complete: /home/uXXXXX/tcs-installed.sif
 </pre></div>
 </div>
-<p>本ドキュメントの初版執筆当時の Singularity PRO では build 時に -B が使えなかったため、上記のように一度 sandbox を経由する必要があり、インストール済みの sandbox に対して定義ファイルによる処理や環境変数の埋め込みを以下のような定義ファイルで別途実施しました。</p>
+<p>When this document was first written, Singularity PRO did not allow the use of -B at build time, so it was necessary to go through the sandbox once, as described above. For this reason, processing by definition files and environment variable embedding were separately performed for the created sandbox image using the following definition files.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat from_source.def
 Bootstrap: localimage
 From: /worktmp/source
@@ -299,7 +295,7 @@ From: /worktmp/source
 $ singularity build -f ~/from_def_with_tcs.sif from_source.def
 </pre></div>
 </div>
-<p>2023年3月現在では、build 時にも -B オプションが使えるバージョンであるため、repo ファイルを %file で取り込ませたり、%post の中で直接ファイル生成するよう記述した定義ファイルで、手作業なしの構築が可能となっています。</p>
+<p>As of March 2023, we use the version which the -B option is available even at build time, so it is possible to build without manual work by having the repo file imported with %file or a definition file written to generate the file directly in %post.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat direct_build.def
 Bootstrap: docker
 From: registry.access.redhat.com/ubi8/python-38
@@ -310,7 +306,7 @@ From: registry.access.redhat.com/ubi8/python-38
     dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
     dnf clean all
     rm -f /tcs.repo
-&lt;&lt;後略&gt;&gt;
+&lt;&lt;..snip..&gt;&gt;
 $ singularity build -f -B /home/apps/singularity:/opt/repo ubi_tcs.sif direct_build.def
 </pre></div>
 </div>
@@ -318,10 +314,10 @@ $ singularity build -f -B /home/apps/singularity:/opt/repo ubi_tcs.sif direct_bu
 <section id="id7">
 <h2><span class="section-number">3.6. </span>Image management by digital signature<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
 <p>Singularity SIF Images are managed in one file, so if you change the file name, you will not be able to trace who created the image and how. This can cause security issues as well as management trouble. Therefore, by adding a digital signature to the image by the creator, it is possible to prevent problems which image being altered or replaced.</p>
-<p>Digital signatures use the public key mechanism. First, calculate the hash value of the image, then encrypt it with the private key, and add (sign) it to the image. The public key should be managed in secure, separately from the image. The user who receives the image calculates the hash value of the image and decryption the signature cryptography with the creator’s public key to verify wheter it is exactly same image signed by the creator.</p>
+<p>Digital signatures use the public key mechanism. First, calculate the hash value of the image, then encrypt it with the private key, and add (sign) it to the image. The public key should be managed in secure, separately from the image. The user who receives the image calculates the hash value of the image and decryption the signature cryptography with the creator’s public key to verify whether it is exactly same image signed by the creator.</p>
 <section id="id8">
 <h3><span class="section-number">3.6.1. </span>Creating a key pair<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
-<p>まず、秘密鍵と公開鍵の組み合わせ(キーペア)を作成します。key コマンドを使います。途中キーストアへプッシュするかどうかを聞かれますが、ここでは n としておいてください。もし Y としてもキーペア自体はできあがっています。</p>
+<p>First, create a key pair of private and public keys. Use the 'key' command. You will be asked if you want to push to the keystore on the way, but for now, leave it as no. even if it is Y, the key pair should be created.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity key newpair
 Enter your name (e.g., John Doe) : Fugaku Tarou
 Enter your email address (e.g., john.doe@example.com) : tarou@fugaku.org
@@ -410,7 +406,7 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
 <li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. What is Singularity?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">2. Procedure for using Singularity</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">3. Creating an image</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#sandbox">3.1. How to use sandbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sandbox">3.1. How to use a sandbox</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id4">3.2. Custom image with definition file</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id5">3.3. Embedding the execution configuration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id6">3.4. Creating an image by submitting a job</a></li>
