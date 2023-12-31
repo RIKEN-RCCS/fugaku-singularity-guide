@@ -184,16 +184,12 @@ $ ./from_def.sif hoge.py 1024
 #!/bin/bash
 
 export TMPDIR=/worktmp
+newgrp fugaku
+singularity biuld --fakeroot create_job.sif example.def
+
+$ pjsub -L &quot;rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00,jobenv=singularity&quot; ./job.sh
 </pre></div>
 </div>
-<dl class="simple">
-<dt>&lt;&lt;&lt;&lt;&lt;&lt;&lt; a8c8547d01c794e43ad82d939cd1ca0eff290d3f</dt><dd><p>newgrp fugaku
-singularity biuld --fakeroot create_job.sif example.def</p>
-</dd>
-</dl>
-<blockquote>
-<div><p>$ pjsub -L &quot;rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00,jobenv=singularity&quot; ./job.sh</p>
-</div></blockquote>
 <p>同様にイメージが作成できます。</p>
 </section>
 <section id="tcsds">
@@ -210,42 +206,42 @@ baseurl=file:///opt/repo/tcs/
 </div>
 <p>このファイルを /tmp にコピーしておきます。CentOS や UBI 等の RHEL 系イメージを /worktmp に sandbox で生成します。仮に source というディレクトリにしておきます。</p>
 <p>次に、このイメージを --writable かつ --fakeroot で起動するのですが、このままでは /home 以下にあるローカルリポジトリにアクセスできません。そこで、リポジトリのディレクトリを -B を用いてコンテナ内の別ディレクトリ、ここでは /opt/repo にバインドします。ただし、--writable を使うと自動的にバインド先のディレクトリが作られないので、事前に作成しておきます。その後、repo ファイルを使ってコンテナ内にリポジトリ情報を追加します。repo ファイルは、デフォルトでバインドされる /tmp に置きましたので、明示的に持ち込む必要はありません。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span> <span class="n">a8c8547d01c794e43ad82d939cd1ca0eff290d3f</span>
-</pre></div>
-</div>
-<blockquote>
-<div><p>$ singularity build --sandbox -f source docker://registry.access.redhat.com/ubi8/python-38
-&lt;&lt;中略&gt;&gt;</p>
-</div></blockquote>
-<dl>
-<dt>&gt;&gt;&gt;&gt;&gt;&gt;&gt; 62ce00750d4f1476503469d4cbdb64a4102adde1</dt><dd><p>$ mkdir source/opt/repo
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox -f source docker://registry.access.redhat.com/ubi8/python-38
+&lt;&lt;..snip..&gt;&gt;
+$ mkdir source/opt/repo
 $ singularity shell --writable --fakeroot -B /home/apps/singularity:/opt/repo source
 Singularity&gt; dnf config-manager --add-repo=/tmp/tcs.repo
 Updating Subscription Management repositories.
 Unable to read consumer identity
-This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
-<p>Adding repo from: <a class="reference external" href="file:///tmp/tcs.repo">file:///tmp/tcs.repo</a></p>
-<p>Singularity&gt; dnf repolist
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+Adding repo from: file:///tmp/tcs.repo
+
+Singularity&gt; dnf repolist
 Updating Subscription Management repositories.
 Unable to read consumer identity
-This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
-<p>repo id                                             repo name
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+repo id                                             repo name
 tcs                                                 tcs
 ubi-8-appstream                                     Red Hat Universal Base Image 8 (RPMs) - AppStream
 ubi-8-baseos                                        Red Hat Universal Base Image 8 (RPMs) - BaseOS
-ubi-8-codeready-builder                             Red Hat Universal Base Image 8 (RPMs) - CodeReady Builder</p>
-<p>Singularity&gt; dnf search FJSV
+ubi-8-codeready-builder                             Red Hat Universal Base Image 8 (RPMs) - CodeReady Builder
+
+Singularity&gt; dnf search FJSV
 Updating Subscription Management repositories.
-Unable to read consumer identity</p>
-<p>This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.</p>
-<p>Last metadata expiration check: 0:03:40 ago on Wed 20 Oct 2021 12:07:04 PM JST.
+Unable to read consumer identity
+
+This system is not registered to Red Hat Subscription Management. You can use subscription-manager to register.
+
+Last metadata expiration check: 0:03:40 ago on Wed 20 Oct 2021 12:07:04 PM JST.
 ===================================== Name Matched: FJSV =====================================
 FJSVxtclanga-common-TCSDS10R24.noarch : Generation Management for Language
 FJSVxtclanga-fc-compiler-CECA023.aarch64 : Fujitsu Fortran/C/C++ Compiler
 FJSVxtclanga-fc-compiler-doc-CMLN016.noarch : Fujitsu Fortran/C/C++ Compiler Online Documents
-&lt;&lt;..snip..&gt;&gt;</p>
-</dd>
-</dl>
+&lt;&lt;..snip..&gt;&gt;
+</pre></div>
+</div>
 <p>このようにリポジトリへアクセスできることが確認できましたら、通常通り必要なパッケージを選択してインストールできます。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>Singularity&gt; dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
 Updating Subscription Management repositories.
@@ -312,7 +308,7 @@ From: registry.access.redhat.com/ubi8/python-38
     dnf install -y FJSVxtclanga-fc-compiler-CECA023.aarch64
     dnf clean all
     rm -f /tcs.repo
-&lt;&lt;後略&gt;&gt;
+&lt;&lt;..snip..&gt;&gt;
 $ singularity build -f -B /home/apps/singularity:/opt/repo ubi_tcs.sif direct_build.def
 </pre></div>
 </div>

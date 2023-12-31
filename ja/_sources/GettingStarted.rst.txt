@@ -46,7 +46,7 @@ Docker hub や同じ形式でイメージを保持するリポジトリから取
     Copying config 424ef6ddfd done
     Writing manifest to image destination
     Storing signatures
-    <<中略>>
+    <<..snip..>>
     INFO:    Creating SIF file...
     INFO:    Build complete:
 
@@ -71,7 +71,7 @@ docker 形式のリポジトリから SIF ファイルを生成します。一�
     Writing manifest to image destination
     Storing signatures
     2021/03/31 12:00:00  info unpack layer: sha256:32d7611b468cbc07986302f1a8e74d92e30a1f11cdfa8bc2900aedda2758d050
-    <<中略>>
+    <<..snip..>>
     INFO:    Creating sandbox directory...
     INFO:    Build complete: ubuntu2004
 
@@ -109,7 +109,7 @@ docker 形式のリポジトリから SIF ファイルを生成します。一�
     $cat /etc/os-release
     NAME="Red Hat Enterprise Linux"
     VERSION="8.6 (Ootpa)"
-    <<後略>>
+    <<..snip..>>
     
     $ singularity shell ubuntu2004.sif 
     Singularity> uname -a
@@ -119,7 +119,7 @@ docker 形式のリポジトリから SIF ファイルを生成します。一�
     Singularity> cat /etc/os-release
     NAME="Ubuntu"
     VERSION="20.04.2 LTS (Focal Fossa)"
-    <<後略>>
+    <<..snip..>>
 
 「富岳」の OS は Redhat Enterprise Linux 8.6 であるにもかかわらず、コンテナ起動後はカーネルとユーザーはそのまま Ubuntu 20.04.2 LTS となっています。ここではホスト OS の Redhat 系のコマンドは使えず、イメージ内の Ubuntu のコマンドのみ利用可能です。ただし、カーネルはそのままなのでカーネルの機能やバージョンに強く依存するようなアプリケーションは動作に支障がでる可能性はあります。
 
@@ -142,7 +142,7 @@ docker 形式のリポジトリから SIF ファイルを生成します。一�
     Singularity> cat /etc/passwd
     root:x:0:0:root:/root:/bin/bash
     daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
-    <<中略>>
+    <<..snip..>>
     _apt:x:100:65534::/nonexistent:/usr/sbin/nologin
     a0XXXX:x:1XXXX:1XXXX::/home/rccs-aot/a0XXXX:/bin/bash
 
@@ -157,7 +157,7 @@ sandbox 内のファイルを直接コンテナ外で確認すると分かりま
     $ singularity exec ubuntu2004.sif cat /etc/os-release
     NAME="Ubuntu"
     VERSION="20.04.2 LTS (Focal Fossa)"
-    <<後略>>
+    <<..snip..>>
 
     $ singularity exec from_sandbox.sif ls -l /foobar
     -rwxr-xr-x 1   root     root         0 Mar 31 12:45 /foobar
@@ -194,6 +194,6 @@ sandbox 内のファイルを直接コンテナ外で確認すると分かりま
     $ ./ubuntu2004.sif cat /etc/os-release
     NAME="Ubuntu"
     VERSION="20.04.2 LTS (Focal Fossa)"
-    <<後略>>
+    <<..snip..>>
 
 Singularity を用いることで、システムに用意された環境にとらわれず、自由なユーザー環境をアプリケーションの実行環境として使い分けられることが分かります。
