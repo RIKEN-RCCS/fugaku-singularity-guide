@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>4. 実行時オプションと挙動 &#8212; Singularity on FUGAKU  ドキュメント</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
     <script src="_static/documentation_options.js?v=c033477b"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
@@ -19,8 +19,9 @@
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -239,23 +240,95 @@ $ singularity sif del 4 ubuarm20.sif
 </section>
 <section id="mpi">
 <h2><span class="section-number">4.5. </span>MPI 並列について<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
-<p>MPI 並列については、ノード内での並列までは大きな問題がありませんが、マルチノード並列では解決すべき問題が多岐に渡るため、ここでは簡易的な記述にとどめておきます。</p>
+<p>MPI 並列については、ノード内での並列までは大きな問題がありませんが、マルチノード並列では解決すべき問題が多岐に渡るため、イメージの作成と実行時に追加で作業や設定が必要です。</p>
 <section id="id7">
 <h3><span class="section-number">4.5.1. </span>ノード内並列<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
 <p>ノード内並列ではプロセスマネージャが直接アプリケーションを起動するため、コンテナ外へ処理が及ぶことがありません。Singularity によりコンテナを起動した中で、mpirun(mpiexec) 等で MPI アプリケーションを起動します。当然ながら必要な MPI ランタイムがコンテナ内に存在することが前提となります。コマンドの例は以下のようになります。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec mpi-apps.sif mpirun -np 8 ~/myapps/hoge inputfile
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec mpi-apps.sif mpiexec -np 8 ~/myapps/hoge inputfile
 </pre></div>
 </div>
 <p>起動されるコンテナは一つだけで、その中で複数のプロセスが動きます。</p>
 </section>
 <section id="id8">
-<h3><span class="section-number">4.5.2. </span>マルチノード並列<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
-<p>マルチノード並列でノード内での並列と同様に起動すると、他のノードへプロセスマネージャの起動は ssh 等により行われます。しかしその先ではコンテナが起動されていないため、ほとんどの場合エラーとなるはずです。そのため、MPI のプロセスマネージャにコンテナ起動を含めてやらせてしまうことでこれに対処します。起動の仕方の例は以下のようになります。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mpirun -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
+<h3><span class="section-number">4.5.2. </span>マルチノード並列の概要<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<p>マルチノード並列でノード内での並列と同様に起動すると、他のノード上でのプロセスマネージャの起動は ssh や PMI により行われます。しかしその先はコンテナ環境が立ち上がっているわけではないため、アプリケーションの起動に失敗します。そのため、MPI のプロセスマネージャにコンテナ起動を含めてやらせてしまうことでこれに対処します。起動の仕方のイメージは以下のようになります。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mpiexec -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
 </pre></div>
 </div>
-<p>つまり、ホスト側とコンテナ内で同じ MPI をインストールないしは -B 等で共有した状態でアプリケーションがビルドされ、実行時にもそれがコンテナ内外で利用可能である必要があります。そのため、コンテナによるユーザー環境の分離が十分にはできません。また、プロセス数分のコンテナが起動されるため、その分オーバーヘッドも大きくなります。</p>
-<p>さらに、tofu をはじめとしたインターコネクタを利用した RDMA 対応も課題です。Singularity では /dev がホスト側と共有されるので、デバイスそのものが見えないことはありません。しかし、デバイスを利用するのに必要なソフトウエアスタックはコンテナ内に用意する必要があり、同時にそれを利用するようアプリケーションもビルドされている必要があります。</p>
+<p>ノード内並列のものと比べ、mpiexec と singularity コマンドの順番が違っていることが分かると思います。この場合、mpiexec を Sgingularity コンテナ外で実行する必要があり、実行時にホスト側とコンテナ内で同じ MPI をインストールないしは -B 等で共有した状態が必要になります。そのため、コンテナによるユーザー環境の分離が十分にはできません。また、プロセス数分のコンテナが起動されるため、その分オーバーヘッドも大きくなります。</p>
+<p>さらに、RDMA 通信に用いられるインターコネクタの対応が必要です。Singularity では /dev がホスト側と共有されるので、デバイスそのものが見えないことはありません。しかし、デバイスを利用するのに必要なソフトウエアスタックやソケットについてはコンテナ内に用意する必要があります。また、スケジューラによりジョブに割り当てられたノードの情報等を環境変数から取得し、実際の MPI に渡すことでようやくマルチノードの MPI 並列が実現します。</p>
+</section>
+<section id="id9">
+<h3><span class="section-number">4.5.3. </span>「富岳」環境でのマルチノード並列<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<p>富士通による TCS に含まれる MPI を取り込んだイメージを作成し、実行する際に必要な方法は次のようになります。イメージ作成の章ではマウントされている領域にあるディレクトリから TCSDS をインストールしましたが、ネットワークアクセスのできるリポジトリも用意されたため、こちらを利用します。 定義ファイルのうち、実行環境を準備する部分だけを記述すると、以下のようになります。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Bootstrap</span><span class="p">:</span> <span class="n">docker</span>
+<span class="n">From</span><span class="p">:</span> <span class="n">redhat</span><span class="o">/</span><span class="n">ubi8</span><span class="p">:</span><span class="mf">8.8</span>
+<span class="o">%</span><span class="n">files</span>
+<span class="o">%</span><span class="n">post</span>
+  <span class="n">dnf</span> <span class="o">--</span><span class="n">noplugins</span> <span class="o">--</span><span class="n">releasever</span><span class="o">=</span><span class="mf">8.8</span> <span class="o">-</span><span class="n">y</span> <span class="n">install</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">dl</span><span class="o">.</span><span class="n">fedoraproject</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">pub</span><span class="o">/</span><span class="n">epel</span><span class="o">/</span><span class="n">epel</span><span class="o">-</span><span class="n">release</span><span class="o">-</span><span class="n">latest</span><span class="o">-</span><span class="mf">8.</span><span class="n">noarch</span><span class="o">.</span><span class="n">rpm</span>
+  <span class="c1"># BEGIN Fujitsu TCS Part</span>
+  <span class="n">cat</span> <span class="o">&lt;&lt;</span><span class="n">EOF</span> <span class="o">&gt;</span> <span class="o">/</span><span class="n">etc</span><span class="o">/</span><span class="n">yum</span><span class="o">.</span><span class="n">repos</span><span class="o">.</span><span class="n">d</span><span class="o">/</span><span class="n">fugaku</span><span class="o">.</span><span class="n">repo</span>
+<span class="p">[</span><span class="n">FUGAKU</span><span class="o">-</span><span class="n">AppStream</span><span class="p">]</span>
+<span class="n">name</span><span class="o">=</span><span class="n">FUGAKU</span><span class="o">-</span><span class="n">AppStream</span>
+<span class="n">baseurl</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">10.4.38.1</span><span class="o">/</span><span class="n">pxinst</span><span class="o">/</span><span class="n">repos</span><span class="o">/</span><span class="n">FUGAKU</span><span class="o">/</span><span class="n">AppStream</span>
+<span class="n">enabled</span><span class="o">=</span><span class="mi">1</span>
+<span class="n">gpgcheck</span><span class="o">=</span><span class="mi">0</span>
+<span class="p">[</span><span class="n">FUGAKU</span><span class="o">-</span><span class="n">BaseOS</span><span class="p">]</span>
+<span class="n">name</span><span class="o">=</span><span class="n">FUGAKU</span><span class="o">-</span><span class="n">BaseOS</span>
+<span class="n">baseurl</span><span class="o">=</span><span class="n">http</span><span class="p">:</span><span class="o">//</span><span class="mf">10.4.38.1</span><span class="o">/</span><span class="n">pxinst</span><span class="o">/</span><span class="n">repos</span><span class="o">/</span><span class="n">FUGAKU</span><span class="o">/</span><span class="n">BaseOS</span>
+<span class="n">enabled</span><span class="o">=</span><span class="mi">1</span>
+<span class="n">gpgcheck</span><span class="o">=</span><span class="mi">0</span>
+<span class="n">EOF</span>
+  <span class="n">dnf</span> <span class="o">--</span><span class="n">noplugins</span> <span class="o">--</span><span class="n">releasever</span><span class="o">=</span><span class="mf">8.8</span> <span class="o">-</span><span class="n">y</span> <span class="n">install</span> <span class="n">xpmem</span> <span class="n">libevent</span> <span class="n">tcl</span> <span class="n">less</span> <span class="n">hwloc</span> <span class="n">openssh</span><span class="o">-</span><span class="n">clients</span> <span class="n">gcc</span><span class="o">-</span><span class="n">c</span><span class="o">++</span> <span class="n">elfutils</span><span class="o">-</span><span class="n">libelf</span><span class="o">-</span><span class="n">devel</span> <span class="n">FJSVpxtof</span> <span class="n">FJSVpxple</span> <span class="n">FJSVpxpsm</span> <span class="n">FJSVpxkrm</span> <span class="n">FJSVxoslibmpg</span> <span class="n">papi</span><span class="o">-</span><span class="n">devel</span>
+  <span class="n">dnf</span> <span class="o">--</span><span class="n">noplugins</span> <span class="n">clean</span> <span class="nb">all</span>
+<span class="c1"># END Fujitsu TCS Part</span>
+</pre></div>
+</div>
+<p>必要なパッケージ群はこれでインストールできます。手元にある MPI のサンプルコードのバイナリをコンテナ内でノード間並列してみましょう。
+以下では、次のように2ノードのインタラクティブジョブとして投入して動作確認をしています。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pjsub</span> <span class="o">--</span><span class="n">interact</span> <span class="o">--</span><span class="n">sparam</span> <span class="n">wait</span><span class="o">-</span><span class="n">time</span><span class="o">=</span><span class="mi">30</span> <span class="o">-</span><span class="n">L</span> <span class="s2">&quot;rscunit=rscunit_ft01,rscgrp=int,node=2,elapse=0:30:00,jobenv=singularity&quot;</span>
+</pre></div>
+</div>
+<p>まず、「富岳」環境でつくられた MPI バイナリには TCS に含まれるランタイムライブラリが必要なので、これはホスト側のディレクトリ /opt/FJSVxtclanga を -B オプションないし、環境変数 SINGULARITY_BIND に設定してバインドして使うことにします。さらに、通信に必要なソケット等が /run, /var/opt/FJSVxtclanga に作られますので、これも取り込みます。また、CPU コアのアフィニティ（割り当て）情報が /sys/devices/system/cpu にあります。Singularity は /sys はデフォルトで共有しますが、再マウントして使うことから、この設定情報を取りこぼしてしまいます。cgroup 情報も同様の状況なので、これらを一括で取り込みます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">SINGULARITY_BIND</span><span class="o">=</span><span class="s1">&#39;/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup&#39;</span>
+<span class="ow">or</span>
+
+<span class="n">mpiexec</span> <span class="o">-</span><span class="n">np</span> <span class="mi">2</span> <span class="n">singularity</span> <span class="n">exec</span> <span class="o">-</span><span class="n">B</span> <span class="s1">&#39;/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup&#39;</span> <span class="n">sample</span><span class="o">.</span><span class="n">sif</span> <span class="o">./</span><span class="n">appbin</span>
+</pre></div>
+</div>
+<p>Singularity は実行時にホスト側の環境変数をほぼ全て取り込みますが、いくつかの例外があります。その最たるものが PATH と LD_LIBRARY_PATH です。せっかくバインドした /opt/FJSVxtclanga にあるライブラリが使えなくなりますので、これをイメージ作成時に %environment に直接埋め込んでおくか、%runscript で他の変数から取得するように書く方法があります。以下のようになります。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>%environment
+  export LD_LIBRARY_PATH=/opt/FJSVxtclanga/tcsds-1.2.38/lib64:$LD_LIBRARY_PATH
+or
+
+%runscript
+  export LD_LIBRARY_PATH=$FJSVXTCLANGA/lib64:$LD_LIBRARY_PATH
+  export PATH=$FJSVXTCLANGA/bin:$PATH
+  application
+</pre></div>
+</div>
+<p>もしくは、以下のように --env オプションで引き渡して追加されるようにします。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mpiexec -np 2 singularity exec --env LD_LIBRARY_PATH=$LD_LIBRARY_PATH sample.sif ./appbin
+</pre></div>
+</div>
+<p>標準出力及びエラー出力は画面に表示されず、ホームディレクトリの output.&lt;JOBID&gt; 以下に保存されます。テストではランクごとに情報を出力するサンプルコードを用いました。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[a0XXXX@f34-0008c ~] mpifcc -o sample sample.c
+[a0XXXX@f34-0008c ~] export SINGULARITY_BIND=&#39;/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup&#39;
+[a0XXXX@f34-0008c ~] mpiexec -n 2 singularity exec --env LD_LIBRARY_PATH=$LD_LIBRARY_PATH sample.sif ./sample
+[a0XXXX@f34-0008c ~] logout
+
+login1$ cd output.30999999/0/1/
+login1$ ls -l
+total 8
+-rw-r--r-- 1 a0XXXX rccs-aot   65 Feb  1 14:59 stdout.1.0
+-rw-r--r-- 1 a0XXXX rccs-aot   65 Feb  1 14:59 stdout.1.1
+login1$ cat stdout.1.0
+Hello world from processor f34-0008c, rank 0 out of 2 processors
+login1$ cat stdout.1.1
+Hello world from processor f34-0000c, rank 1 out of 2 processors
+</pre></div>
+</div>
+<p>ここでは、「富岳」環境におけるノード間 MPI 並列に必要な条件だけを抽出して動作の確認をしました。</p>
 </section>
 </section>
 </section>
