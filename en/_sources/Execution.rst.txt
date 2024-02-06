@@ -253,7 +253,7 @@ overlay.img 内には書き込まれたデータが残るため、必要なデ�
 MPI 並列について
 *****************
 
-MPI 並列については、ノード内での並列までは大きな問題がありませんが、マルチノード並列では解決すべき問題が多岐に渡るため、ここでは簡易的な記述にとどめておきます。
+MPI 並列については、ノード内での並列までは大きな問題がありませんが、マルチノード並列では解決すべき問題が多岐に渡るため、イメージの作成と実行時に追加で作業や設定が必要です。
 
 ノード内並列
 =============
@@ -262,19 +262,105 @@ MPI 並列については、ノード内での並列までは大きな問題が�
 
 ::
 
-    $ singularity exec mpi-apps.sif mpirun -np 8 ~/myapps/hoge inputfile
+    $ singularity exec mpi-apps.sif mpiexec -np 8 ~/myapps/hoge inputfile
 
 起動されるコンテナは一つだけで、その中で複数のプロセスが動きます。
 
-マルチノード並列
-=================
+マルチノード並列の概要
+======================
 
-マルチノード並列でノード内での並列と同様に起動すると、他のノードへプロセスマネージャの起動は ssh 等により行われます。しかしその先ではコンテナが起動されていないため、ほとんどの場合エラーとなるはずです。そのため、MPI のプロセスマネージャにコンテナ起動を含めてやらせてしまうことでこれに対処します。起動の仕方の例は以下のようになります。
+マルチノード並列でノード内での並列と同様に起動すると、他のノード上でのプロセスマネージャの起動は ssh や PMI により行われます。しかしその先はコンテナ環境が立ち上がっているわけではないため、アプリケーションの起動に失敗します。そのため、MPI のプロセスマネージャにコンテナ起動を含めてやらせてしまうことでこれに対処します。起動の仕方のイメージは以下のようになります。
 
 ::
 
-    $ mpirun -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
+    $ mpiexec -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
 
-つまり、ホスト側とコンテナ内で同じ MPI をインストールないしは -B 等で共有した状態でアプリケーションがビルドされ、実行時にもそれがコンテナ内外で利用可能である必要があります。そのため、コンテナによるユーザー環境の分離が十分にはできません。また、プロセス数分のコンテナが起動されるため、その分オーバーヘッドも大きくなります。
+ノード内並列のものと比べ、mpiexec と singularity コマンドの順番が違っていることが分かると思います。この場合、mpiexec を Sgingularity コンテナ外で実行する必要があり、実行時にホスト側とコンテナ内で同じ MPI をインストールないしは -B 等で共有した状態が必要になります。そのため、コンテナによるユーザー環境の分離が十分にはできません。また、プロセス数分のコンテナが起動されるため、その分オーバーヘッドも大きくなります。
 
-さらに、tofu をはじめとしたインターコネクタを利用した RDMA 対応も課題です。Singularity では /dev がホスト側と共有されるので、デバイスそのものが見えないことはありません。しかし、デバイスを利用するのに必要なソフトウエアスタックはコンテナ内に用意する必要があり、同時にそれを利用するようアプリケーションもビルドされている必要があります。
+さらに、RDMA 通信に用いられるインターコネクタの対応が必要です。Singularity では /dev がホスト側と共有されるので、デバイスそのものが見えないことはありません。しかし、デバイスを利用するのに必要なソフトウエアスタックやソケットについてはコンテナ内に用意する必要があります。また、スケジューラによりジョブに割り当てられたノードの情報等を環境変数から取得し、実際の MPI に渡すことでようやくマルチノードの MPI 並列が実現します。
+
+「富岳」環境でのマルチノード並列
+================================
+
+富士通による TCS に含まれる MPI を取り込んだイメージを作成し、実行する際に必要な方法は次のようになります。イメージ作成の章ではマウントされている領域にあるディレクトリから TCSDS をインストールしましたが、ネットワークアクセスのできるリポジトリも用意されたため、こちらを利用します。 定義ファイルのうち、実行環境を準備する部分だけを記述すると、以下のようになります。
+
+::
+
+    Bootstrap: docker
+    From: redhat/ubi8:8.8
+    %files
+    %post
+      dnf --noplugins --releasever=8.8 -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+      # BEGIN Fujitsu TCS Part
+      cat <<EOF > /etc/yum.repos.d/fugaku.repo
+    [FUGAKU-AppStream]
+    name=FUGAKU-AppStream
+    baseurl=http://10.4.38.1/pxinst/repos/FUGAKU/AppStream
+    enabled=1
+    gpgcheck=0
+    [FUGAKU-BaseOS]
+    name=FUGAKU-BaseOS
+    baseurl=http://10.4.38.1/pxinst/repos/FUGAKU/BaseOS
+    enabled=1
+    gpgcheck=0
+    EOF
+      dnf --noplugins --releasever=8.8 -y install xpmem libevent tcl less hwloc openssh-clients gcc-c++ elfutils-libelf-devel FJSVpxtof FJSVpxple FJSVpxpsm FJSVpxkrm FJSVxoslibmpg papi-devel
+      dnf --noplugins clean all
+    # END Fujitsu TCS Part
+
+必要なパッケージ群はこれでインストールできます。手元にある MPI のサンプルコードのバイナリをコンテナ内でノード間並列してみましょう。
+以下では、次のように2ノードのインタラクティブジョブとして投入して動作確認をしています。
+
+::
+
+    pjsub --interact --sparam wait-time=30 -L "rscunit=rscunit_ft01,rscgrp=int,node=2,elapse=0:30:00,jobenv=singularity"
+
+まず、「富岳」環境でつくられた MPI バイナリには TCS に含まれるランタイムライブラリが必要なので、これはホスト側のディレクトリ /opt/FJSVxtclanga を -B オプションないし、環境変数 SINGULARITY_BIND に設定してバインドして使うことにします。さらに、通信に必要なソケット等が /run, /var/opt/FJSVxtclanga に作られますので、これも取り込みます。また、CPU コアのアフィニティ（割り当て）情報が /sys/devices/system/cpu にあります。Singularity は /sys はデフォルトで共有しますが、再マウントして使うことから、この設定情報を取りこぼしてしまいます。cgroup 情報も同様の状況なので、これらを一括で取り込みます。
+
+::
+
+    export SINGULARITY_BIND='/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup'
+    or
+
+    mpiexec -np 2 singularity exec -B '/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup' sample.sif ./appbin
+
+Singularity は実行時にホスト側の環境変数をほぼ全て取り込みますが、いくつかの例外があります。その最たるものが PATH と LD_LIBRARY_PATH です。せっかくバインドした /opt/FJSVxtclanga にあるライブラリが使えなくなりますので、これをイメージ作成時に %environment に直接埋め込んでおくか、%runscript で他の変数から取得するように書く方法があります。以下のようになります。
+
+::
+
+    %environment
+      export LD_LIBRARY_PATH=/opt/FJSVxtclanga/tcsds-1.2.38/lib64:$LD_LIBRARY_PATH
+    or
+
+    %runscript
+      export LD_LIBRARY_PATH=$FJSVXTCLANGA/lib64:$LD_LIBRARY_PATH
+      export PATH=$FJSVXTCLANGA/bin:$PATH
+      application
+
+もしくは、以下のように --env オプションで引き渡して追加されるようにします。
+
+::
+
+    mpiexec -np 2 singularity exec --env LD_LIBRARY_PATH=$LD_LIBRARY_PATH sample.sif ./appbin
+
+
+標準出力及びエラー出力は画面に表示されず、ホームディレクトリの output.<JOBID> 以下に保存されます。テストではランクごとに情報を出力するサンプルコードを用いました。
+
+::
+    
+    [a0XXXX@f34-0008c ~] mpifcc -o sample sample.c
+    [a0XXXX@f34-0008c ~] export SINGULARITY_BIND='/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup'
+    [a0XXXX@f34-0008c ~] mpiexec -n 2 singularity exec --env LD_LIBRARY_PATH=$LD_LIBRARY_PATH sample.sif ./sample
+    [a0XXXX@f34-0008c ~] logout
+
+    login1$ cd output.30999999/0/1/
+    login1$ ls -l
+    total 8
+    -rw-r--r-- 1 a0XXXX rccs-aot   65 Feb  1 14:59 stdout.1.0
+    -rw-r--r-- 1 a0XXXX rccs-aot   65 Feb  1 14:59 stdout.1.1
+    login1$ cat stdout.1.0
+    Hello world from processor f34-0008c, rank 0 out of 2 processors
+    login1$ cat stdout.1.1
+    Hello world from processor f34-0000c, rank 1 out of 2 processors
+
+ここでは、「富岳」環境におけるノード間 MPI 並列に必要な条件だけを抽出して動作の確認をしました。

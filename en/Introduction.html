@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>1. What is Singularity? &#8212; Singularity on FUGAKU  documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4f649999" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=039e1c02" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
@@ -18,8 +18,9 @@
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   
@@ -33,15 +34,15 @@
             
   <section id="singularity">
 <h1><span class="section-number">1. </span>What is Singularity?<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
-<p>Singularity is an open source Linux container implementation developed in 2015 to enhance the convenience of supercomputers at the Lawrence Berkeley National Laboratory in the United States.</p>
-<p>Currently Singularity is being developed separately by Sylabs, a company founded by the developers of the product, and by an independent community. The free of charge open source version is called the Community Edition (CE) and is published on Github under a modified BSD License (with some code under the Apache License). In contrast, there is Singularity PRO, which is based on CE with well-tested functionality and paid services such as security support and bug fix backports, provided by Sylabs, the main developer of the software. “FUGAKU” uses Singularity PRO for security and support reasons.</p>
+<p>Singularity is an open source Linux container implementation developed in 2015 to enhance the convenience of supercomputers at the Lawrence Berkeley national Laboratory in the united states.</p>
+<p>Currently Singularity is being developed separately by Sylabs, a company founded by the developers, and by an independent community. The latter, free of charge, is called the Community Edition (CE) and is published on Github under a modified BSD License (with some code under the Apache License). In contrast, there is Singularity PRO, which is based on CE with well-tested functionality and paid services such as security support and bug fix backports, provided by Sylabs, the main developer of the software. “FUGAKU” uses Singularity PRO for security and support reasons.</p>
 <p>With Singularity, of the system configuration required to execute an application, the parts other than the kernel can be independently configured and maintained, and can be integrated with the application, so if the environment has the same architecture, the entire execution environment can be carried.</p>
 <p>Also, if the runtime libraries required for an application are updated frequently or if you need to make full use of a wide variety of applications, you don’t have to think about setting up and switching between each requirement separately. It is also easier to keep old runtime environments, making it easier to revalidate data.</p>
 <p>There are 4 distinctive features of Singularity compared to other container implementations:</p>
 <ol class="arabic simple">
-<li><p>The image is created in a single file, which makes managing container images intuitive and easy.</p></li>
-<li><p>The image can be used as a single file without extraction and decompression resulting in the reduction of the I/O workload to the shared file system.</p></li>
-<li><p>The ID and privileges of the started user are inherited inside the container. As a result, files, Hardware, and processes can be accessed as the same user.</p></li>
+<li><p>Since the image is created in a single file, managing container images is intuitive and easy.</p></li>
+<li><p>Since the image can be used as a single file without extraction and decompression, I/O workload to the shared file system can be suppressed.</p></li>
+<li><p>The ID and privileges of the started user are inherited inside the container. As a results, files, Hardware, and processes can be accessed as the same user.</p></li>
 <li><p>Secure operation is possible because no root authority or daemon is involved when creating an image or executing a container.</p></li>
 </ol>
 <section id="id1">
