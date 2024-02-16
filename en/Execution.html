@@ -238,8 +238,8 @@ $ singularity sif del 4 ubuarm20.sif
 <p>These operations can also be performed on the login node, so there is no need to submit a job for this purpose. Overlay also contributes to reducing the metadata access load on the shared file system, especially when there are many small files, since I/O is completed within a single file.</p>
 </section>
 <section id="mpi">
-<h2><span class="section-number">4.5. </span>About mpi parallel<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
-<p>MPI 並列については、ノード内での並列までは大きな問題がありませんが、マルチノード並列では解決すべき問題が多岐に渡るため、イメージの作成と実行時に追加で作業や設定が必要です。</p>
+<h2><span class="section-number">4.5. </span>MPI parallelism<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
+<p>Regarding mpi parallelism, there are no major problems up to parallelism within a node, but since there are various points to be solved with multi-node parallelism, .additional work and configuration is required at image creation and runtime.</p>
 <section id="id7">
 <h3><span class="section-number">4.5.1. </span>Parallel within a node<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
 <p>In parallel within a node, the process manager launches the application directly, so processing does not extend outside the container. While launching the container with singularity, launch his mpi application with mpirun (mpiexec) etc. of course, it is assumed that the required mpi runtime is in the container. An example command looks like this:</p>
@@ -249,17 +249,17 @@ $ singularity sif del 4 ubuarm20.sif
 <p>Only one container is started, and multiple processes run in it.</p>
 </section>
 <section id="id8">
-<h3><span class="section-number">4.5.2. </span>マルチノード並列の概要<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
-<p>マルチノード並列でノード内での並列と同様に起動すると、他のノード上でのプロセスマネージャの起動は ssh や PMI により行われます。しかしその先はコンテナ環境が立ち上がっているわけではないため、アプリケーションの起動に失敗します。そのため、MPI のプロセスマネージャにコンテナ起動を含めてやらせてしまうことでこれに対処します。起動の仕方のイメージは以下のようになります。</p>
+<h3><span class="section-number">4.5.2. </span>Overview of multi-node parallel<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<p>When multi-node parallel application is started in the same way as parallel in a node, the process manager will be started to other nodes by ssh or PMI. However, since the container isn’t started on the destination node, the application almost always fails to start with error. Therefore, we address this by having the MPI process manager include container startup, not only application startup. An example of how to start it is as follows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mpiexec -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
 </pre></div>
 </div>
-<p>ノード内並列のものと比べ、mpiexec と singularity コマンドの順番が違っていることが分かると思います。この場合、mpiexec を Sgingularity コンテナ外で実行する必要があり、実行時にホスト側とコンテナ内で同じ MPI をインストールないしは -B 等で共有した状態が必要になります。そのため、コンテナによるユーザー環境の分離が十分にはできません。また、プロセス数分のコンテナが起動されるため、その分オーバーヘッドも大きくなります。</p>
-<p>さらに、RDMA 通信に用いられるインターコネクタの対応が必要です。Singularity では /dev がホスト側と共有されるので、デバイスそのものが見えないことはありません。しかし、デバイスを利用するのに必要なソフトウエアスタックやソケットについてはコンテナ内に用意する必要があります。また、スケジューラによりジョブに割り当てられたノードの情報等を環境変数から取得し、実際の MPI に渡すことでようやくマルチノードの MPI 並列が実現します。</p>
+<p>Compared to intranode parallel execution, you’ll notice that the order of mpiexec and singularity commands is different. In this case, you need to execute mpiexec outside the Singularity container, This means that you need to ensure that the same MPI is installed both on the host side and inside the container, or using options -B to bind MPI installation path into the container. Consequently, full separation of the user environment via containers is not achievable. Additionally, launching one container per process results in increased overhead.</p>
+<p>Furthermore, compatibility with interconnects used for RDMA communication is necessary. In Singularity, /dev is shared with the host, so the devices themselves remain visible. However, the software stack and sockets required for device utilization must be prepared within the container. Additionally, by retrieving various information about nodes the scheduler allocated to jobs from environment variables, and passing them to the actual MPI finally enables multi-node MPI parallel.</p>
 </section>
 <section id="id9">
-<h3><span class="section-number">4.5.3. </span>「富岳」環境でのマルチノード並列<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
-<p>富士通による TCS に含まれる MPI を取り込んだイメージを作成し、実行する際に必要な方法は次のようになります。イメージ作成の章ではマウントされている領域にあるディレクトリから TCSDS をインストールしましたが、ネットワークアクセスのできるリポジトリも用意されたため、こちらを利用します。 定義ファイルのうち、実行環境を準備する部分だけを記述すると、以下のようになります。</p>
+<h3><span class="section-number">4.5.3. </span>Multi-node parallel on FUGAKU<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<p>When creating and executing an image that incorporates MPI included in TCS by Fujitsu, the necessary steps are as follows. In the image creation section, we installed TCSDS from a directory that was mounted. However, since a network accessible repository is also available, we will use it here. When describing only the part of the definition file that prepares the execution environment, it looks as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Bootstrap</span><span class="p">:</span> <span class="n">docker</span>
 <span class="n">From</span><span class="p">:</span> <span class="n">redhat</span><span class="o">/</span><span class="n">ubi8</span><span class="p">:</span><span class="mf">8.8</span>
 <span class="o">%</span><span class="n">files</span>
@@ -283,19 +283,18 @@ $ singularity sif del 4 ubuarm20.sif
 <span class="c1"># END Fujitsu TCS Part</span>
 </pre></div>
 </div>
-<p>必要なパッケージ群はこれでインストールできます。手元にある MPI のサンプルコードのバイナリをコンテナ内でノード間並列してみましょう。
-以下では、次のように2ノードのインタラクティブジョブとして投入して動作確認をしています。</p>
+<p>You can install the necessary packages with this. Let’s try running the binary of a MPI sample code within the container for inter-node parallel execution. In the following example, we submit it as an interactive job with two nodes to verify its functionality.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pjsub</span> <span class="o">--</span><span class="n">interact</span> <span class="o">--</span><span class="n">sparam</span> <span class="n">wait</span><span class="o">-</span><span class="n">time</span><span class="o">=</span><span class="mi">30</span> <span class="o">-</span><span class="n">L</span> <span class="s2">&quot;rscunit=rscunit_ft01,rscgrp=int,node=2,elapse=0:30:00,jobenv=singularity&quot;</span>
 </pre></div>
 </div>
-<p>まず、「富岳」環境でつくられた MPI バイナリには TCS に含まれるランタイムライブラリが必要なので、これはホスト側のディレクトリ /opt/FJSVxtclanga を -B オプションないし、環境変数 SINGULARITY_BIND に設定してバインドして使うことにします。さらに、通信に必要なソケット等が /run, /var/opt/FJSVxtclanga に作られますので、これも取り込みます。また、CPU コアのアフィニティ（割り当て）情報が /sys/devices/system/cpu にあります。Singularity は /sys はデフォルトで共有しますが、再マウントして使うことから、この設定情報を取りこぼしてしまいます。cgroup 情報も同様の状況なので、これらを一括で取り込みます。</p>
+<p>First, for the MPI binaries created in the ‘Fugaku’ environment, the runtime libraries included in TCS are necessary. Therefore, we will bind the host-side directory /opt/FJSVxtclanga using the -B option or set it as an environment variable SINGULARITY_BIND. Additionally, the necessary sockets for communication will be created in /run and /var/opt/FJSVxtclanga, so we’ll also incorporate those. Furthermore, information about CPU core affinity (assignment) resides in /sys/devices/system/cpu. While Singularity shares /sys by default with remounting, it lead to missing this configuration information. Similarly, cgroup information faces a similar situation, so we’ll include all of these collectively.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">SINGULARITY_BIND</span><span class="o">=</span><span class="s1">&#39;/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup&#39;</span>
 <span class="ow">or</span>
 
 <span class="n">mpiexec</span> <span class="o">-</span><span class="n">np</span> <span class="mi">2</span> <span class="n">singularity</span> <span class="n">exec</span> <span class="o">-</span><span class="n">B</span> <span class="s1">&#39;/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup&#39;</span> <span class="n">sample</span><span class="o">.</span><span class="n">sif</span> <span class="o">./</span><span class="n">appbin</span>
 </pre></div>
 </div>
-<p>Singularity は実行時にホスト側の環境変数をほぼ全て取り込みますが、いくつかの例外があります。その最たるものが PATH と LD_LIBRARY_PATH です。せっかくバインドした /opt/FJSVxtclanga にあるライブラリが使えなくなりますので、これをイメージ作成時に %environment に直接埋め込んでおくか、%runscript で他の変数から取得するように書く方法があります。以下のようになります。</p>
+<p>Singularity generally imports almost all host-side environment variables at runtime, but there are a few exceptions. The most notable ones are PATH and LD_LIBRARY_PATH. Therefore, the libraries located in the directory /opt/FJSVxtclanga where you’ve bound runtime won’t be accessible. To address this, you have two options during image creation. Embed these environment variables directly into %environment. Or retrieve them from other variables within %runscript.Here’s an example of how it can be done:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>%environment
   export LD_LIBRARY_PATH=/opt/FJSVxtclanga/tcsds-1.2.38/lib64:$LD_LIBRARY_PATH
 or
@@ -306,11 +305,11 @@ or
   application
 </pre></div>
 </div>
-<p>もしくは、以下のように –env オプションで引き渡して追加されるようにします。</p>
+<p>Or, you can pass them by the –env option, like this.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>mpiexec -np 2 singularity exec --env LD_LIBRARY_PATH=$LD_LIBRARY_PATH sample.sif ./appbin
 </pre></div>
 </div>
-<p>標準出力及びエラー出力は画面に表示されず、ホームディレクトリの output.&lt;JOBID&gt; 以下に保存されます。テストではランクごとに情報を出力するサンプルコードを用いました。</p>
+<p>The standard output and errror output are not displayed on the screen, but are saved in the directory output.&lt;JOBID&gt; in your home directory. For this testing purpose, we used a sample code that outputs information for each rank.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[a0XXXX@f34-0008c ~] mpifcc -o sample sample.c
 [a0XXXX@f34-0008c ~] export SINGULARITY_BIND=&#39;/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup&#39;
 [a0XXXX@f34-0008c ~] mpiexec -n 2 singularity exec --env LD_LIBRARY_PATH=$LD_LIBRARY_PATH sample.sif ./sample
@@ -327,7 +326,7 @@ login1$ cat stdout.1.1
 Hello world from processor f34-0000c, rank 1 out of 2 processors
 </pre></div>
 </div>
-<p>ここでは、「富岳」環境におけるノード間 MPI 並列に必要な条件だけを抽出して動作の確認をしました。</p>
+<p>In this section, we extracted only the necessary conditions for multi-node MPI parallel in the FUGAKU environment to evaluate the functionality.</p>
 </section>
 </section>
 </section>
@@ -358,7 +357,7 @@ Hello world from processor f34-0000c, rank 1 out of 2 processors
 <li class="toctree-l2"><a class="reference internal" href="#id5">4.2. Instantiation and interactive processing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id6">4.3. Direct execution with specified repository</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#overlay">4.4. Overlay option</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#mpi">4.5. About mpi parallel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mpi">4.5. MPI parallelism</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Submitting.html">5. Cooperation with job scheduler</a></li>
