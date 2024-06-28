@@ -10,4 +10,5 @@
    Creating.rst
    Execution.rst
    Submitting.rst
+   Appendix.rst
 

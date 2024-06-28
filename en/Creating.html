@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -32,8 +32,8 @@
 
           <div class="body" role="main">
             
-  <section id="id1">
-<h1><span class="section-number">3. </span>Creating an image<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
+  <section id="creating">
+<span id="id1"></span><h1><span class="section-number">3. </span>Creating an image<a class="headerlink" href="#creating" title="Link to this heading">¶</a></h1>
 <p>Learn how to create an SIF image for execution. There are some methods depending on the setup you need, so choose the one that suits your situation.</p>
 <section id="sandbox">
 <h2><span class="section-number">3.1. </span>How to use a sandbox<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
@@ -71,9 +71,22 @@ $ singularity exec appl.sif /usr/local/bin/application
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity shell --writable ubuntu2004
 Singularity&gt; touch /hogefuga
 Singularity&gt; ls -l /
-％％％％％％％％％％％％％％％％％
+total 20
+lrwxrwxrwx    1 a0XXXX fugaku     7 Apr 27 02:46 bin -&gt; usr/bin
+drwxr-xr-x    2 a0XXXX fugaku     6 Apr 15  2020 boot
+drwxr-xr-x   21 root   root    3860 May 15 03:19 dev
+lrwxrwxrwx    1 a0XXXX fugaku    36 May 11 14:28 environment -&gt; .singularity.d/env/90-environment.sh
+drwxr-xr-x   31 a0XXXX fugaku  4096 Apr 27 02:49 etc
+-rw-rw-r--    1 a0XXXX fugaku     0 May 16 14:28 hogefuga
+drwxr-xr-x    3 a0XXXX fugaku    60 May 11 14:28 home
+&lt;&lt;..snip..&gt;&gt;
 Singularity&gt; exit
-$ singularity build from_executable.sif ubuntu2004
+$ singularity build from_sandbox.sif ubuntu2004
+INFO:    Starting build...
+INFO:    Creating SIF file...
+INFO:    Build complete: from_sandbox.sif
+$ ./from_sandbox.sif ls -l /hogefuga
+-rw-rw-r--    1 a0XXXX fugaku     0 May 16 14:28 hogefuga
 </pre></div>
 </div>
 <p>When you want to make changes to the system in the image as root, for example by installing additional packages, this requires the –fakeroot option to be used in conjunction with the –writable option. –fakeroot, separates the user ID namespace in the container from that in the host OS, mapping UID=0, or root, in the container to tue normal user on the host.  This makes it look as if the user is working with normal user privileges from the host environment,  while using root privileges in the container. At this time, the user’s home directory is bound to /root.</p>
@@ -101,11 +114,11 @@ Singulraity&gt; ls -l /home
 total 0
 </pre></div>
 </div>
-<p>However, there is another problem to be solved. The isolated ID is valid only on the node starting the container. So with local storage, file owners can follow suit, but with shared file systems such as FEFS and NFS, storage can’t handle identity isolation. Therefore, the sandbox image in the home directory cannot be used with –fakeroot and the environment construction does not work properly. There is /worktmp as a local storage available to normal user in FUGAKU environment, but this is shared from the memory of the compute node as storage. However, please note that compute nodes have only 32GB of memory, so it is not possible to create a huge image.</p>
+<p>However, there is another problem to be solved. The isolated ID is valid only on the node starting the container. So with local storage, file owners can follow suit, but with shared file systems such as FEFS and NFS, storage can’t handle identity isolation. Therefore, the sandbox image in the home directory cannot be used with –fakeroot and the environment construction does not work properly. There is /worktmp as a local storage available to normal user in FUGAKU environment, but this is shared from the memory of the compute node as storage. Note that a compute node has only 32GB of memory, so it is not possible to create a image larger than 10GB. If you need to create such a image, consider to use an external command proot. Refer to the <a class="reference internal" href="Appendix.html#proot"><span class="std std-ref">Workaround using proot</span></a> about details.</p>
 <p>The flow of creating a sandbox image from the SIF image in the /worktmp directory, installing any package in the –fakeroot environment, and returning it to the SIF image should be as follows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ newgrp fugaku
 $ singularity build --sandbox /worktmp/ubuntu-sandbox ubuntu2004.sif
-$ singularity exec --fakeroot --writable /worktmp/ubuntu-sandbox apt install -y XXXXXXX 　# コマンド実行の例
+$ singularity exec --fakeroot --writable /worktmp/ubuntu-sandbox apt install -y XXXXXXX  # コマンド実行の例
 $ singularity shell --fakeroot --writable /worktmp/ubuntu-sandbox     # シェル環境でインタラクティブ作業する例
 Singularity&gt; apt install XXXXXXX
 Reading package lists... Done
@@ -187,7 +200,7 @@ export TMPDIR=/worktmp
 newgrp fugaku
 singularity biuld --fakeroot create_job.sif example.def
 
-$ pjsub -L &quot;rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00,jobenv=singularity&quot; ./job.sh
+$ pjsub -L &quot;rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00&quot; ./job.sh
 </pre></div>
 </div>
 <p>You can create an image in the same way.</p>
@@ -296,11 +309,14 @@ From: /worktmp/source
 $ singularity build -f ~/from_def_with_tcs.sif from_source.def
 </pre></div>
 </div>
-<p>As of March 2023, we use the version which the -B option is available even at build time, so it is possible to build without manual work by having the repo file imported with %file or a definition file written to generate the file directly in %post.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat direct_build.def
-Bootstrap: docker
-From: registry.access.redhat.com/ubi8/python-38
-%file
+<p>Since version 3.9 or later, the -B option works at building images, it enables direct image building without any manual operations written in above. Use definition files describeed importing repo file by %file or creating it in %post. Note that the target directory for -B optoin must exist inside the source image. In this case, /opt/repo directory must be created before building.We will end up working in the sandbox. However, if the specified directory does not exist at the time of execution using the 'singularity exec', it will be prepared automatically.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox ubi_py38 docker://registry.access.redhat.com/ubi8/python-38
+$ mkdir ubi_py38/opt/repo
+
+$ cat direct_build.def
+Bootstrap: localimage
+From: ubi_py38
+%files
     tcs.repo /
 %post
     dnf config-manager --add-repo=/tcs.repo
@@ -417,6 +433,7 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Execution.html">4. Runtime options and behavior</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Submitting.html">5. Cooperation with job scheduler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">6. FUGAKU specific topics</a></li>
 </ul>
 
 <div class="relations">
@@ -428,7 +445,7 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -436,7 +453,7 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
+</search>
 <script>document.getElementById('searchbox').style.display = "block"</script>
 
 
@@ -452,7 +469,7 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.2.6.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.3.7.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

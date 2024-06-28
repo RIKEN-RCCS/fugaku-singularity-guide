@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -42,17 +42,21 @@
 <li><p>Let Singularity do all the work using the definition file that describes the procedure for creating the image.</p></li>
 </ol>
 <p>The manual method is convenient for debugging and simple correction when the worker is familiar with environment construction and the work content is simple, or when a problem occurs during creation. However, if you do not save the work contents separately, it may not be possible to make an exact reproducution again. Rather than manually creating an image each time, creating a definition file, managing it in a repository, etc. so that it can be executed as a batch job enables high reproducibility and effective use of resources.</p>
-<p>Singularity has two ways to create an image using a definition file, one is to use the local environment and the other is to use a cloud service. As of March 2023, you can only work in FUGAKU or other ARM environment, since no cloud services are available to create ARM based image.</p>
+<p>Singularity has two ways to create an image using a definition file, one is to use the local environment and the other is to use a cloud service. This document is limited to a description how to do it on local environment, such as FUGAKU or other ARM environment.</p>
 <p>Singularity allows you to reuse existing container images to create your own. You can use not only Singularity images, but also Docker, OS yum/apt repositories, etc. In most cases, you will be making changes based on some base image. In this document, we will use AlmaLinux and Ubuntu distributed by Docker hub, as well as the Universal Base Image (UBI) supplied by Redhat for containers as a base.</p>
 <section id="id1">
 <h2><span class="section-number">2.1. </span>FUGAKU Singularity environment<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
-<p>In FUGAKU, the login node is x86_64 architecture, so you need to work on the compute node to create an image for ARM architecture. First, let’s do some manual work as an interactive job to see how Singularity works. Submit the job by specifying Singularity in jobenv as shown below.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00,jobenv=singularity&quot;
+<p>In FUGAKU, the login node is x86_64 architecture, so you need to work on the compute node to create an image for ARM architecture. First, let’s do some manual work as an interactive job to see how Singularity works. After April 2024, the previously required setting jobenv=singularity is no longer required.Check the version of singularity that you use. 4.1.2-2 as a default or 3.11-7 are available as follows.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00&quot;
 [INFO] PJM 0000 pjsub Job XXXXXXX submitted.
 [INFO] PJM 0081 ..connected.
 [INFO] PJM 0082 pjsub Interactive job XXXXXXX started.
-[a0XXXX@b31-3208c ~]$ singularity version
-3.9-8.el8
+[a0XXXX@b31-3208c ~]$ singularity --version
+SingularityPRO version 4.1.2-2.el8
+[a0XXXX@b31-3200c ~]$ /opt/singularitypro311/bin/singularity --version
+SingularityPRO version 3.11-7.el8
+[a0XXXX@b31-3200c ~]$ /opt/singularitypro41/singularity --version
+SingularityPRO version 4.1.2-2.el8
 </pre></div>
 </div>
 <p>In the above example, the working time is 30 minutes. After this, working contents other than those saved in the home directory etc. may be lost.</p>
@@ -76,8 +80,8 @@ $ singularity pull ubuntu2004.sif docker://ubuntu:20.04
 $ singularity pull ubi8-python38.sif docker://registry.access.redhat.com/ubi8/python-38
 </pre></div>
 </div>
-<p>Generate an SIF file from docker compatible repositories. Once acquired, the docker format image is saved under ~/.singularity/cache, and only the part with some update will be downloadedfrom the next time onward, so it takes only a short time to complete. It is also possible to omit the image name (file name), in which case the file name generated from the repository name will be used. Also, although the architecture is not specified, Singularity tries to get the same architecture of the local machine, so it automatically get AARCH64 image as recognized from the compute node. According to the user manual, it is supposed to be possible to specify with the –arch option, but the source of download is limited to the 'library', and the architecture cannot be specified for other type of repository such as 'docker' as of the available version in March 2023.</p>
-<p>The main part of a SIF image is based on the SquashFS format. SquashFS is a direct mount of the tar.gz file.Hence, it is readonly. You cannot modify it after creation. There are two ways to integrate applications with runtime environment into the container image. One is using a definition file described later. Another is to extract required files into directory on local file system and then convert them to SIF after. The overlay feature, which overlays the writable areas of an image without directly modifying it, can be used to make changes that are only effective at runtime or to replace specific directories or files in a single SIF image.</p>
+<p>Generate an SIF file from docker compatible repositories. Once acquired, the docker format image is saved under ~/.singularity/cache, and only the part with some update will be downloaded from the next time onward, so it takes only a short time to complete. It is also possible to omit the image name (file name), in which case the file name generated from the repository name will be used. Also, although the architecture is not specified, Singularity tries to get the same architecture of the local machine, so it automatically get AARCH64 image as recognized from the compute node. According to the user manual, even version 3.11, it is supposed to be possible to specify with the –arch option, but the source of download is limited to the 'library', and the architecture cannot be specified for other type of repository such as 'docker'.From the version 4.1 or later, you can do that as 'singularlity pull –arch=arm64 docker://…' on the login node.</p>
+<p>The main part of a SIF image is based on the SquashFS format. SquashFS is a direct mount of the tar.gz file. Hence, it is readonly. You cannot modify it after creation directly. There are two ways to integrate applications with runtime environment into the container image. One is using a definition file described later. Another is to extract required files into directory on local file system and then convert them to SIF after. The overlay feature, which overlays the writable areas of an image without directly modifying it, can be used to make changes that are only effective at runtime or to replace specific directories or files in a single SIF image.</p>
 <p>The image expanded to the file system is called sandbox and is created by adding the –sandbox option to the build command. The save destination is a directory, and the image is expanded in it. In that directory, all files originally owned by root are owned by the user oneself, and the contents can be edited interactively without starting the container.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox ubunt2004 docker://ubuntu:20.04
 INFO:    Starting build...
@@ -103,7 +107,7 @@ $ ls -l
 $ singularity build --sandbox from_SIF ubuntu2004.sif
 </pre></div>
 </div>
-<p>Note that the sandbox directory itself is of course writable, but booting the container from the sandbox image is read-only, just like the SIF image. This means that you cannot install the application on the system in the image by booting from the sandbox. Specify the –writable option if you want to boot in writable mode (not available for SIF images). However, you do not have root privileges, and you cannot use su etc. in the container to obtain root privileges. Therefore, package management commands such as dnf, yum, rpm, dpkg, etc. that require root privileges cannot be executed. However, it is possible to copy files from outside the container into sandbox and then convert them to a SIF image.</p>
+<p>Note that the sandbox directory itself is of course writable, but booting the container from the sandbox image is read-only, just like the SIF image. This means that you cannot install the application on the system in the image by booting from the sandbox. Specify the –writable option if you want to boot in writable mode (not available for SIF images). However, you do not have root privileges, and you cannot use su etc. in the container to obtain root privileges. Therefore, package management commands such as dnf, yum, rpm, dpkg, etc. that require root privileges are enabled with –fakeroot option. However, it is possible to copy files from outside the container into sandbox and then convert them to a SIF image.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec from_sandbox.sif ls -l /foobar
 </pre></div>
 </div>
@@ -113,17 +117,17 @@ $ singularity build --sandbox from_SIF ubuntu2004.sif
 <h2><span class="section-number">2.3. </span>Launching a container from an image<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
 <p>One of the ways to start a container is to use singularity’s shell command to start a shell inside the container. Let’s compare it with the information of the host OS.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uname -a
-Linux d28-3101c 4.18.0-372.19.1.el8_6.aarch64 #1 SMP Mon Jul 18 11:10:00 EDT 2022 aarch64 aarch64 aarch64 GNU/Linux
+Linux c27-0200c 4.18.0-513.5.1.el8_9.aarch64 #1 SMP Fri Sep 29 05:50:39 EDT 2023 aarch64 aarch64 aarch64 GNU/Linux
 $ whoami
 a0XXXX
 $cat /etc/os-release
 NAME=&quot;Red Hat Enterprise Linux&quot;
-VERSION=&quot;8.6 (Ootpa)&quot;
+VERSION=&quot;8.9 (Ootpa)&quot;
 &lt;&lt;..snip..&gt;&gt;
 
 $ singularity shell ubuntu2004.sif
 Singularity&gt; uname -a
-Linux d28-3101c 4.18.0-372.19.1.el8_6.aarch64 #1 SMP Mon Jul 18 11:10:00 EDT 2022 aarch64 aarch64 aarch64 GNU/Linux
+Linux c27-0200c 4.18.0-513.5.1.el8_9.aarch64 #1 SMP Fri Sep 29 05:50:39 EDT 2023 aarch64 aarch64 aarch64 GNU/Linux
 Singularity&gt; whoami
 a0XXXX
 Singularity&gt; cat /etc/os-release
@@ -132,7 +136,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
 &lt;&lt;..snip..&gt;&gt;
 </pre></div>
 </div>
-<p>Even though the OS of “FUGAKU” is Redhat Enterprise Linux 8.6, the kernel and users are still Ubuntu 20.04.2 LTS after the container is started. You can’t use any Redhat commands on the host OS here, only the Ubuntu commands in the image. However, since the kernel remains the same, applications that strongly depend on the function or version of the kernel may interfere with operation.</p>
+<p>Even though the OS of “FUGAKU” is Redhat Enterprise Linux 8.9, the kernel and users are still Ubuntu 20.04.2 LTS after the container is started. You can’t use any Redhat commands on the host OS here, only the Ubuntu commands in the image. However, since the kernel remains the same, applications that strongly depend on the function or version of the kernel may interfere with operation.</p>
 <p>Then run ls, you can see the home directory as it is, as shown below. however, you can only see your own home directory. Try running ls -al /home, ls -al ~/.. to see this. You can see that the home directories of users other than yourself are not visible.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Singularity</span><span class="o">&gt;</span> <span class="n">ls</span> <span class="o">-</span><span class="n">l</span>
 <span class="n">total</span> <span class="mi">440172</span>
@@ -165,10 +169,13 @@ $ singularity exec from_sandbox.sif ls -l /foobar
 
 $ singularity exec ubuntu2020 cat /etc/os-release
 $ singularity exec docker://centos:latest cat /etc/passwd
+INFO:    Converting OCI blobs to SIF format
+INFO:    Starting build...
+&lt;&lt;..snip..&gt;&gt;
 </pre></div>
 </div>
 <p>The command was able to be executed in the environment inside the container. Also, inside of the container from converted SIF image, you can see the file created by the user is owned by root.</p>
-<p>If you specify a repository image, it will not be converted to an sif image, but the downloaded image will be expanded and used in the cache. So it’s much slower to boot than using SIF. As a general rule, use the SIF image for actual use, and keep the execution from the sandbox or the direct execution of the docker image etc. only for testing or temporary purposes.</p>
+<p>If a repository is specified, the image is converted to a SIF image as shown in above and then executed. When you do the same again, it compares the images in the cache and that in repository. If there are any updates, only the parts with update are downloaded and converted to a SIF again. If there are no updates, the created SIF is used as is.This makes the startup slower than using the SIF directly, but it is useful if you want to always use the latest version or if you do not want to manage SIF images by file name. Basically, using a SIF image is recommended if you want to fix the contents of the image or minimize the boot overhead, etc. Running from sandbox or Docker image directly should be used with attention to overhead and pros or cons.</p>
 <p>The home directory is also shared inside the container, so let’s use the files there from inside the container. Display the beginning of the SIF image file with the command in the container.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif head -n 1 ubuntu2004.sif
 #!/usr/bin/env run-singularity
@@ -220,6 +227,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
 <li class="toctree-l1"><a class="reference internal" href="Creating.html">3. Creating an image</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Execution.html">4. Runtime options and behavior</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Submitting.html">5. Cooperation with job scheduler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">6. FUGAKU specific topics</a></li>
 </ul>
 
 <div class="relations">
@@ -231,7 +239,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -239,7 +247,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
+</search>
 <script>document.getElementById('searchbox').style.display = "block"</script>
 
 
@@ -255,7 +263,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.2.6.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.3.7.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

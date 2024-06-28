@@ -275,9 +275,11 @@ MPI 並列については、ノード内での並列までは大きな問題が�
 
     $ mpiexec -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
 
-ノード内並列のものと比べ、mpiexec と singularity コマンドの順番が違っていることが分かると思います。この場合、mpiexec を Sgingularity コンテナ外で実行する必要があり、実行時にホスト側とコンテナ内で同じ MPI をインストールないしは -B 等で共有した状態が必要になります。そのため、コンテナによるユーザー環境の分離が十分にはできません。また、プロセス数分のコンテナが起動されるため、その分オーバーヘッドも大きくなります。
+ノード内並列のものと比べ、mpiexec と singularity コマンドの順番が違っていることが分かると思います。この場合、mpiexec を Singularity コンテナ外で実行する必要があり、実行時にホスト側とコンテナ内で同じ MPI をインストールないしは -B 等で共有した状態が必要になります。そのため、コンテナによるユーザー環境の分離が十分にはできません。また、プロセス数分のコンテナが起動されるため、その分オーバーヘッドも大きくなります。
 
 さらに、RDMA 通信に用いられるインターコネクタの対応が必要です。Singularity では /dev がホスト側と共有されるので、デバイスそのものが見えないことはありません。しかし、デバイスを利用するのに必要なソフトウエアスタックやソケットについてはコンテナ内に用意する必要があります。また、スケジューラによりジョブに割り当てられたノードの情報等を環境変数から取得し、実際の MPI に渡すことでようやくマルチノードの MPI 並列が実現します。
+
+.. _MultiNode-parallel:
 
 「富岳」環境でのマルチノード並列
 ================================
@@ -313,23 +315,23 @@ MPI 並列については、ノード内での並列までは大きな問題が�
 
 ::
 
-    pjsub --interact --sparam wait-time=30 -L "rscunit=rscunit_ft01,rscgrp=int,node=2,elapse=0:30:00,jobenv=singularity"
+    pjsub --interact --sparam wait-time=30 -L "rscunit=rscunit_ft01,rscgrp=int,node=2,elapse=0:30:00"
 
-まず、「富岳」環境でつくられた MPI バイナリには TCS に含まれるランタイムライブラリが必要なので、これはホスト側のディレクトリ /opt/FJSVxtclanga を -B オプションないし、環境変数 SINGULARITY_BIND に設定してバインドして使うことにします。さらに、通信に必要なソケット等が /run, /var/opt/FJSVxtclanga に作られますので、これも取り込みます。また、CPU コアのアフィニティ（割り当て）情報が /sys/devices/system/cpu にあります。Singularity は /sys はデフォルトで共有しますが、再マウントして使うことから、この設定情報を取りこぼしてしまいます。cgroup 情報も同様の状況なので、これらを一括で取り込みます。
+まず、「富岳」環境でつくられた MPI バイナリには TCS に含まれるランタイムライブラリが必要なので、これはホスト側のディレクトリ /opt/FJSVxtclanga を -B オプションないし、環境変数 SINGULARITY_BIND に設定してバインドして使うことにします。さらに、通信に必要なソケット等が /run, /var/opt/FJSVtcs に作られますので、これも取り込みます。また、CPU コアのアフィニティ（割り当て）情報が /sys/devices/system/cpu にあります。Singularity は /sys はデフォルトで共有しますが、再マウントして使うことから、この設定情報を取りこぼしてしまいます。cgroup 情報も同様の状況なので、これらを一括で取り込みます。
 
 ::
 
-    export SINGULARITY_BIND='/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup'
+    export SINGULARITY_BIND='/opt/FJSVxtclanga,/var/opt/FJSVtcs,/run,/sys/devices/system/cpu,/sys/fs/cgroup'
     or
 
-    mpiexec -np 2 singularity exec -B '/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup' sample.sif ./appbin
+    mpiexec -np 2 singularity exec -B '/opt/FJSVxtclanga,/var/opt/FJSVtcs,/run,/sys/devices/system/cpu,/sys/fs/cgroup' sample.sif ./appbin
 
 Singularity は実行時にホスト側の環境変数をほぼ全て取り込みますが、いくつかの例外があります。その最たるものが PATH と LD_LIBRARY_PATH です。せっかくバインドした /opt/FJSVxtclanga にあるライブラリが使えなくなりますので、これをイメージ作成時に %environment に直接埋め込んでおくか、%runscript で他の変数から取得するように書く方法があります。以下のようになります。
 
 ::
 
     %environment
-      export LD_LIBRARY_PATH=/opt/FJSVxtclanga/tcsds-1.2.38/lib64:$LD_LIBRARY_PATH
+      export LD_LIBRARY_PATH=/opt/FJSVxtclanga/tcsds-1.2.39/lib64:$LD_LIBRARY_PATH
     or
 
     %runscript
@@ -349,7 +351,7 @@ Singularity は実行時にホスト側の環境変数をほぼ全て取り込�
 ::
     
     [a0XXXX@f34-0008c ~] mpifcc -o sample sample.c
-    [a0XXXX@f34-0008c ~] export SINGULARITY_BIND='/opt/FJSVxtclanga,/var/opt/FJSVxtclanga,/run,/sys/devices/system/cpu,/sys/fs/cgroup'
+    [a0XXXX@f34-0008c ~] export SINGULARITY_BIND='/opt/FJSVxtclanga,/var/opt/FJSVtcs,/run,/sys/devices/system/cpu,/sys/fs/cgroup'
     [a0XXXX@f34-0008c ~] mpiexec -n 2 singularity exec --env LD_LIBRARY_PATH=$LD_LIBRARY_PATH sample.sif ./sample
     [a0XXXX@f34-0008c ~] logout
 
