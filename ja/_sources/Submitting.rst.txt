@@ -17,7 +17,6 @@
     #PJM -L "node=1"
     #PJM -L "rscunit=rscunit_ft01"
     #PJM -L "rscgrp=small"
-    #PJM -L "jobenv=singularity"
     #PJM -L "elapse=15:00"
 
     export OMP_NUM_THREADS=8
@@ -55,7 +54,6 @@
     #PJM -L "node=1"
     #PJM -L "rscunit=rscunit_ft01"
     #PJM -L "rscgrp=small"
-    #PJM -L "jobenv=singularity"
     #PJM -L "elapse=15:00"
 
     hoge input.txt
@@ -67,11 +65,11 @@
 インタラクティブ実行
 *********************
 
-build のところで実施したように、インタラクティブジョブを実行すれば、その中でこれまで紹介してきた方法での操作が可能です。
+:ref:`Creating` の章で実施したのと同様にインタラクティブジョブを実行すれば、その中でこれまで紹介してきた方法での操作が可能です。
 
 ::
 
-    $ pjsub --interact -L "rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00,jobenv=singularity"
+    $ pjsub --interact -L "rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00"
     [INFO] PJM 0000 pjsub Job XXXXXXX submitted.
     [INFO] PJM 0081 ..connected.
     [INFO] PJM 0082 pjsub Interactive job XXXXXXX started.

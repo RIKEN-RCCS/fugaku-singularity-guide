@@ -9,11 +9,12 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
     <script src="_static/documentation_options.js?v=c033477b"></script>
-    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/translations.js?v=4dbe4bdc"></script>
     <link rel="index" title="索引" href="genindex.html" />
     <link rel="search" title="検索" href="search.html" />
+    <link rel="next" title="6. 「富岳」特有の問題" href="Appendix.html" />
     <link rel="prev" title="4. 実行時オプションと挙動" href="Execution.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -44,7 +45,6 @@
 #PJM -L &quot;node=1&quot;
 #PJM -L &quot;rscunit=rscunit_ft01&quot;
 #PJM -L &quot;rscgrp=small&quot;
-#PJM -L &quot;jobenv=singularity&quot;
 #PJM -L &quot;elapse=15:00&quot;
 
 export OMP_NUM_THREADS=8
@@ -77,7 +77,6 @@ From: ubuntu:focal
 #PJM -L &quot;node=1&quot;
 #PJM -L &quot;rscunit=rscunit_ft01&quot;
 #PJM -L &quot;rscgrp=small&quot;
-#PJM -L &quot;jobenv=singularity&quot;
 #PJM -L &quot;elapse=15:00&quot;
 
 hoge input.txt
@@ -89,8 +88,8 @@ $ pjsub ./job.sh
 </section>
 <section id="id4">
 <h2><span class="section-number">5.3. </span>インタラクティブ実行<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
-<p>build のところで実施したように、インタラクティブジョブを実行すれば、その中でこれまで紹介してきた方法での操作が可能です。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00,jobenv=singularity&quot;
+<p><a class="reference internal" href="Creating.html#creating"><span class="std std-ref">イメージの作成</span></a> の章で実施したのと同様にインタラクティブジョブを実行すれば、その中でこれまで紹介してきた方法での操作が可能です。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00&quot;
 [INFO] PJM 0000 pjsub Job XXXXXXX submitted.
 [INFO] PJM 0081 ..connected.
 [INFO] PJM 0082 pjsub Interactive job XXXXXXX started.
@@ -129,6 +128,7 @@ Singularity&gt;
 <li class="toctree-l2"><a class="reference internal" href="#id4">5.3. インタラクティブ実行</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">6. 「富岳」特有の問題</a></li>
 </ul>
 
 <div class="relations">
@@ -136,10 +136,11 @@ Singularity&gt;
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="Execution.html" title="前の章へ"><span class="section-number">4. </span>実行時オプションと挙動</a></li>
+      <li>Next: <a href="Appendix.html" title="次の章へ"><span class="section-number">6. </span>「富岳」特有の問題</a></li>
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">クイック検索</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -147,7 +148,7 @@ Singularity&gt;
       <input type="submit" value="検索" />
     </form>
     </div>
-</div>
+</search>
 <script>document.getElementById('searchbox').style.display = "block"</script>
 
 
@@ -163,7 +164,7 @@ Singularity&gt;
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.2.6.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.3.7.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

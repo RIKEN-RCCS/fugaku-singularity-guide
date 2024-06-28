@@ -1,0 +1,164 @@
+.. _Fugaku-Specific:
+
+「富岳」特有の問題
+##############################
+
+「富岳」は汎用性を重視して作られたスパコンですが、様々な理由で制約があります。ここまでの解説にも記述はありますが Singularity に習熟されているユーザー向けに「富岳」特有の制約について抽出してまとめました。
+
+
+利用可能なバージョン
+*********************
+
+2024年6月現在、「富岳」で利用可能な Singularity のバージョンは以下の通りです。
+
+- 3.11-7 /opt/singularitypro311/bin/singularity にインストールされています。
+- 4.1.2-2 /opt/singularitypro41/bin/singularity にインストールされています。
+
+デフォルト(/usr/bin/singularity)は 4.1.2 へのリンクになっていて、3.11 が必要になることはほとんどないと思われますが、必要な場合はフルパス指定で実行するか、PATH を通してください。追加の設定変更は不要です。
+
+ログインノードとコンピュートノード両方に同じバージョンがインストールされていますが、x86_64 と aarch64 の違いに注意してください。また、コンピュートノードで dockerhub などから取得する際に aarch64 のイメージが存在しない場合、x86_64 のイメージを取得してしまいます。コンテナはハードウエアのエミュレーションを行わないため、アーキテクチャが異なるイメージを利用できません。コンバートや電子署名などのイメージ自体のハンドリングなど、コンテナ起動を伴わない処理はどちらでも実行可能です。できた SIF のアーキテクチャは以下のようにして確認できます。
+
+::
+
+    $ singularity sif list sample-arm.sif
+    ------------------------------------------------------------------------------
+    ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
+    ------------------------------------------------------------------------------
+    1    |1       |NONE    |32176-32362               |Def.FILE
+    2    |1       |NONE    |32362-33398               |JSON.Generic
+    3    |1       |NONE    |33398-33594               |JSON.Generic
+    4    |1       |NONE    |36864-51032064            |FS (Squashfs/*System/arm64)
+
+ID=4 の TYPE にアーキテクチャが記載されています。
+
+
+sandbox イメージ利用に関する制約
+**********************************
+
+sandbox イメージはコンテナイメージを既存のファイルシステム内に展開したものです。SIF イメージを使っていても、--fakeroot を指定すると $TMPDIR に sandbox イメージを展開して動きます。そして --fakeroot を用いてユーザー名前空間を分離すると、共有ファイルシステム上ではユーザーのマッピング情報がストレージを構成するサーバーと共有できず、書き込みができないという問題があります。すなわち、ホームディレクトリ上に sandbox イメージを作っても、そこで --fakeroot, --writable オプションを使うことができません。
+
+また、--fakeroot で Singularity はイメージのビルドを行うにあたり、やはり $TMPDIR 以下に sandbox イメージを作成します。それを最終的に SIF へ変換するという挙動になります。そのため、ユーザーがイメージの build を行う際は sandbox を使っていることになります。
+
+/worktmp を用いた回避方法
+===========================
+
+通常の環境では $TMPDIR は /var/tmp などを指すのが普通なのですが、「富岳」ではホームディレクトリを指すように設定されています。そのため、上記の問題に直面してしまいます。これを回避するためには、ノードに搭載されたローカルストレージ、特にコンピュートノードでは /worktmp を利用することになります。イメージのビルドを含む --fakeroot を用いた動作をする場合は以下のようにしてから利用してください。
+
+::
+
+    $ export TMPDIR=/worktmp
+
+
+ただし /worktmp は shmfs といい、メインメモリの半分程度をファイルシステムとして使えるようにしているものです。ノードあたり 32GB のメモリしか持たない「富岳」のコンピュートノード上で、この方法でイメージのビルドを行う場合、最大のイメージサイズは 10GB 前後と予想されます。
+
+.. _proot:
+
+proot を用いた回避方法
+=======================
+
+ユーザーネームスペースを切り替える proot コマンドというユーティリティがあります。これが PATH にあると --fakeroot や /worktmp を用いずにホームディレクトリ上でイメージの作成が行えるため、10GB を大幅に超えたサイズのイメージ作成ができます。Singularity は PATH に proot を見つけると、--fakeroot オプションを指定していない限り、proot を利用するようになります。ただし、機能的にいくつか制約があります。
+
+proot は標準でインストールされていないため、以下の手順で proot 本体と Samba Project の talloc を入手してビルドします。
+
+::
+
+    $ git clone https://github.com/proot-me/proot.git
+    $ cd proot
+    $ wget https://www.samba.org/ftp/talloc/talloc-2.4.2.tar.gz
+    $ tar xzf talloc-2.4.2.tar.gz
+    $ cd talloc-2.4.2
+    $ ./configure --disable-python
+    $ gcc -Ilib/replace -Ibin/default -D__STDC_WANT_LIB_EXT1__=1 -c talloc.c  -o talloc.o
+    $ cd ../src
+
+ここで、GNUMakefile を編集して今回の目的では不要な Python 関連の記述を削除し、talloc.o がリンクされるようにします。デフォルトではダイナミックリンクですが、コンテナ内で動くようスタティックリンクされている必要があります。変更点は以下のようになります。
+
+::
+
+    --- a/src/GNUmakefile
+    +++ b/src/GNUmakefile
+    @@ -16,15 +16,18 @@ OBJDUMP  = $(CROSS_COMPILE)objdump
+     PYTHON   = python3
+ 
+     HAS_SWIG := $(shell swig -version 2>/dev/null)
+    -PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c "import sys; print(sys.version_info.major)" 2>/dev/null)
+    -PYTHON_EMBED = $(shell ${PYTHON} -c "import sys; print('--embed' if sys.hexversion > 0x03080000 else '')" 2>/dev/null)
+    -HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/null)
+   
+     CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
+     CFLAGS   += -g -Wall -Wextra -O2
+     CFLAGS   += $(shell pkg-config --cflags talloc)
+     LDFLAGS  += -Wl,-z,noexecstack
+    -LDFLAGS  += $(shell pkg-config --libs talloc)
+    +LDFLAGS  += ../talloc-2.4.2/talloc.o
+
+変更したら、必要な proot のみをビルドし、PATH の通った先にインストールしておきます。
+
+::
+
+    $ make proot
+    $ mkdir -p ~/.local/$(arch)/bin
+    $ cp proot ~/.local/$(arch)/bin
+    $ chmod 755 ~/.local/$(arch)/bin/proot
+
+ログインノードとコンピュートノードでは使えるバイナリが異なるので、この例ではアーキテクチャ別のディレクトリをインストール先にしています。そのため PATH の通し方も次のようにしてください。
+
+::
+
+    export PATH=~/.local/$(arch)/bin:$PATH
+
+実際に --fakeroot なしでイメージのビルドをしてみます。singularity は自動的に proot を検出します。
+
+::
+
+    $ cat p.def
+    Bootstrap: localimage
+    From: alma.sif
+    %post
+	    yum -y install python3-pip
+	    pip3 install numpy scipy
+	    yum clean all
+
+    $ singularity build p.sif p.def
+    INFO:    Using proot to build unprivileged. Not all builds are supported. If build fails, use --remote or --fakeroot.
+    INFO:    Starting build...
+    <<..snip..>>
+    INFO:    Creating SIF file...
+    INFO:    Build complete: p.sif
+
+なお、現時点で proot を使う場合の制約は以下の通りです。上記のメッセージにもある通り、うまくいかない場合は --fakeroot を使う必要があります。
+
+#. 定義ファイルの Bootstrap として yum, debootstrap, arch, zypper などが指定できません。localimage, library, oras, docker などは利用可能です。
+#. 定義ファイルの記述として %pre, %setup など、コンテナ起動前の処理が利用できません。
+#. proot が作る root 権限はエミュレートされたものなので、完全な root 権限は発揮できません。
+
+
+ホームディレクトリの permission に関する制約
+********************************************
+
+一般ユーザーのホームディレクトリは、以下のようなパーミッション設定になっていて、fugaku グループに所属していないユーザーはアクセスができません。
+
+::
+    
+    $ ls -dl /vol0004/mdt0/home
+    drwxr-x--- 281 root fugaku 16384 Feb 23 17:50 /vol0004/mdt0/home
+    $ ls -dl /vol0004/mdt0/home/uXXXXX
+    drwx------ 8 uXXXXX fugaku 4096 Apr 25 18:45 /vol0004/mdt0/home/uXXXXXX
+
+一般ユーザーはサブグループとして fugaku グループに属しているものの、プライマリグループではありません。--fakeroot が用いる Linux カーネルの UID 名前空間分離機能の制約として、グループ権限はプライマリグループのみマッピングされるため、コンテナ内のユーザーは fugaku グループへのアクセス権限を持つことができません。そのためホームディレクトリのマウントができず、failed to mount /home/uXXXXX to /root: permission denied というエラーとなってしまいます。これを回避する方法は２つあります。
+
+#. 事前に newgrp fugaku として、プライマリグループを fugaku グループとしてから実行する。ただし、ファイルのオーナーやグループ権限は fugaku になってしまう。
+#. この問題に対処するため SingularityPRO 3.11-4 で追加された --no-setgroups オプションを利用する。
+
+どちらでも動作に支障がないことは確認されています。
+
+
+MPI によるマルチノード並列について
+***********************************
+
+「富岳」ではスケジューラが確保したノード間の通信などに制約があるため、ユーザー自身で用意した MPI でのノード間並列は原則使用できません。 :ref:`MultiNode-parallel` を参照してください。
+
+OCIモードについて
+******************
+
+Singularity PRO 4.1 から利用可能になった OCI 互換の動作が実現できる OCI モードについてですが、セキュリティ対策と思われる利用制限によりイメージのビルド及び実行のどちらもできない状態です。

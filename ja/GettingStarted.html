@@ -9,7 +9,7 @@
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
     <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
     <script src="_static/documentation_options.js?v=c033477b"></script>
-    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/translations.js?v=4dbe4bdc"></script>
     <link rel="index" title="索引" href="genindex.html" />
@@ -43,17 +43,21 @@
 <li><p>イメージ作成の手順など記述した定義ファイルを用いて、Singularity に全ての作業を行わせる。</p></li>
 </ol>
 <p>手動で行う方法は、作業者が環境構築に精通していて、かつ作業内容が単純である場合や、作成時に不具合が出た際のデバッグや簡易な修正には便利です。しかし、作業内容を別途保存しておかないと、再現が厳密にはできなくなる恐れがあります。イメージの作成のたびに手作業を行うよりは、定義ファイルを作成してリポジトリ等で管理し、バッチジョブとして実行できるようにしておくことで、高い再現性とリソースの有効利用が可能になります。</p>
-<p>Singularity というソフトウエア自体には、定義ファイルを利用してイメージを作成する方法として、手元の環境を利用する方法と、クラウドサービスを使う方法が存在しますが、2023年3月現在、「富岳」では手元環境（「富岳」以外の ARM64 環境を含む）での作業のみが可能です。</p>
+<p>Singularity というソフトウエア自体には、定義ファイルを利用してイメージを作成する方法として、手元の環境を利用する方法と、クラウドサービスを使う方法が存在しますが、ここでは「富岳」では手元環境（「富岳」以外の ARM64 環境を含む）での作業のみを対象とします。</p>
 <p>Singularity では、既存のコンテナイメージを再利用して自分のイメージを作成することができます。対象は Singularity イメージだけでなく Docker や OS の yum/apt のリポジトリ等が利用可能です。殆どの場合、何らかのベースイメージを元に変更を加えていくことになるでしょう。この文書では Docker hub で配布されている AlmaLinux や Ubuntu、ならびに Redhat 社が供給するコンテナ向け Universal Base Image(UBI) をベースにすることを考えます。</p>
 <section id="id1">
 <h2><span class="section-number">2.1. </span>「富岳」の Singularity 環境<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
-<p>「富岳」ではログインノードが x86_64 アーキテクチャのため、ARM アーキテクチャのイメージを操作するにはコンピューティングノードで作業する必要があります。ここではまず Singularity の動きを確認するため、インタラクティブジョブとして手作業をしてみます。以下のように jobenv に singularity を指定してジョブを投入してください。</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00,jobenv=singularity&quot;
+<p>「富岳」ではログインノードが x86_64 アーキテクチャのため、ARM アーキテクチャのイメージを操作するにはコンピューティングノードで作業する必要があります。ここではまず Singularity の動きを確認するため、インタラクティブジョブとして手作業をしてみます。昨年までは jobenv に singularity を指定する必要がありましたが、2024年4月からは不要になりました。なお、2024年6月現在、3.11-7 と 4.1.2-2 が利用可能です。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00&quot;
 [INFO] PJM 0000 pjsub Job XXXXXXX submitted.
 [INFO] PJM 0081 ..connected.
 [INFO] PJM 0082 pjsub Interactive job XXXXXXX started.
-[a0XXXX@b31-3208c ~]$ singularity version
-3.9-8.el8
+[a0XXXX@b31-3208c ~]$ singularity --version
+SingularityPRO version 4.1.2-2.el8
+[a0XXXX@b31-3200c ~]$ /opt/singularitypro311/bin/singularity --version
+SingularityPRO version 3.11-7.el8
+[a0XXXX@b31-3200c ~]$ /opt/singularitypro41/singularity --version
+SingularityPRO version 4.1.2-2.el8
 </pre></div>
 </div>
 <p>上記例では作業時間は30分です。これを過ぎると、ホームディレクトリ等へ保存されたもの以外の作業内容は失われる可能性があります。</p>
@@ -77,8 +81,8 @@ $ singularity pull ubuntu2004.sif docker://ubuntu:20.04
 $ singularity pull ubi8-python38.sif docker://registry.access.redhat.com/ubi8/python-38
 </pre></div>
 </div>
-<p>docker 形式のリポジトリから SIF ファイルを生成します。一度取得した docker 形式のイメージは ~/.singularity/cache 以下に保存され、次回以降はアップデートがある部分のみダウンロードするので短時間で完了します。イメージ名（ファイル名）を省略することも可能で、その場合リポジトリ名から生成されたファイル名が使われます。また、アーキテクチャの指定が入っていませんが、Singularity は起動したマシンのアーキテクチャを取得しようとするので、コンピュートノードからは自動的に AARCH64 のイメージを取得します。マニュアルを見ると --arch オプションで指定できることになっていますが、取得先が library に限られていており、docker hub等、他の取得先に対してアーキテクチャの指定はできません。</p>
-<p>出来上がった SIF イメージの実体は SquashFS という形式になっています。SquashFS は tar.gz ファイルを直接マウントするような方式であり、起動すると読み込み専用となります。そのため、SIF イメージの中身をあとから操作すること はできません。イメージの中にアプリケーションやランタイムをインストールするには、後述する定義ファイルを用いてビルドする方法と、一度ファイルシステムに展開してから再度 SIF イメージへ変換する方法があります。また、イメージを直接変更せず、書き込みできる領域を重ね合わせる overlay 機能を用いると、実行時のみ有効な変更を施したり、SIF イメージ一つに対して特定のディレクトリやファイルのみ載せ替えて使うこともできます。</p>
+<p>docker 形式のリポジトリから SIF ファイルを生成します。一度取得した docker 形式のイメージは ~/.singularity/cache 以下に保存され、次回以降はアップデートがある部分のみダウンロードするので短時間で完了します。イメージ名（ファイル名）を省略することも可能で、その場合リポジトリ名から生成されたファイル名が使われます。また、アーキテクチャの指定が入っていませんが、Singularity は起動したマシンのアーキテクチャを取得しようとするので、コンピュートノードからは自動的に AARCH64 のイメージを取得します。マニュアルを見ると --arch オプションで指定できることになっていますが、3.X では取得先が library に限られていており、docker hub等、他の取得先に対してアーキテクチャの指定はできません。4.1 ではその制限はないので、ログインノード上で singularity pull --arch=arm64 docker://... のようにできます。</p>
+<p>出来上がった SIF イメージの実体は SquashFS という形式になっています。SquashFS は tar.gz ファイルを直接マウントするような方式であり、起動すると読み込み専用となります。そのため、SIF イメージの中身をあとから操作することはできません。イメージの中にアプリケーションやランタイムをインストールするには、後述する定義ファイルを用いてビルドする方法と、一度ファイルシステムに展開してから再度 SIF イメージへ変換する方法があります。また、イメージを直接変更せず、書き込みできる領域を重ね合わせる overlay 機能を用いると、実行時のみ有効な変更を施したり、SIF イメージ一つに対して特定のディレクトリやファイルのみ載せ替えて使うこともできます。</p>
 <p>ファイルシステムに展開されたイメージは sandbox と呼ばれ、build コマンドに対し --sandbox オプションを追加して作成します。保存先はディレクトリになり、その中にイメージが展開されています。そのディレクトリは、本来 root がオーナーとなるファイルが全て、ユーザー自身がオーナーとなっており、コンテナを起動しなくても中身をインタラクティブに編集することができます。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox ubunt2004 docker://ubuntu:20.04
 INFO:    Starting build...
@@ -104,7 +108,7 @@ $ ls -l
 $ singularity build --sandbox from_SIF ubuntu2004.sif
 </pre></div>
 </div>
-<p>なお注意点として、sandbox ディレクトリ自体は当然ながら書き込み可能ですが、sandbox イメージからコンテナを起動すると SIF イメージと同じくリードオンリーとなります。つまり sandbox から起動しても、イメージ内のシステムにアプリケーションをインストールできません。書き込み可能なモードで起動する場合は --writable オプションを指定します（SIF イメージには使えません）。ただし root 権限はありません、コンテナ内で su 等を用いて root 権限を取得することもできません。そのため、root 権限を必要とする、例えば dnf, yum, rpm, dpkg 等のパッケージ管理コマンド等は実行できません。ただし、コンテナ外から sandbox 内にファイルをコピーしたり、それをさらに SIF に変換することは可能です。</p>
+<p>なお注意点として、sandbox ディレクトリ自体は当然ながら書き込み可能ですが、sandbox イメージからコンテナを起動すると SIF イメージと同じくリードオンリーとなります。つまり sandbox から起動しても、イメージ内のシステムにアプリケーションをインストールできません。書き込み可能なモードで起動する場合は --writable オプションを指定します（SIF イメージには使えません）。ただし root 権限はありません、コンテナ内で su 等を用いて root 権限を取得することもできません。そのため、root 権限を必要とする、例えば dnf, yum, rpm, dpkg 等のパッケージ管理コマンド等は、後述する --fakeroot を使う必要があります。ただし、コンテナ外から sandbox 内にファイルをコピーしたり、それをさらに SIF に変換することは可能です。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec from_sandbox.sif ls -l /foobar
 </pre></div>
 </div>
@@ -114,17 +118,17 @@ $ singularity build --sandbox from_SIF ubuntu2004.sif
 <h2><span class="section-number">2.3. </span>イメージからのコンテナ起動<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
 <p>コンテナを起動する方法のうち、Singularity の shell コマンドを使い、コンテナ内でシェルを起動してみます。ホストOSの情報と比較してみましょう。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uname -a
-Linux d28-3101c 4.18.0-372.19.1.el8_6.aarch64 #1 SMP Mon Jul 18 11:10:00 EDT 2022 aarch64 aarch64 aarch64 GNU/Linux
+Linux c27-0200c 4.18.0-513.5.1.el8_9.aarch64 #1 SMP Fri Sep 29 05:50:39 EDT 2023 aarch64 aarch64 aarch64 GNU/Linux
 $ whoami
 a0XXXX
 $cat /etc/os-release
 NAME=&quot;Red Hat Enterprise Linux&quot;
-VERSION=&quot;8.6 (Ootpa)&quot;
+VERSION=&quot;8.9 (Ootpa)&quot;
 &lt;&lt;..snip..&gt;&gt;
 
 $ singularity shell ubuntu2004.sif
 Singularity&gt; uname -a
-Linux d28-3101c 4.18.0-372.19.1.el8_6.aarch64 #1 SMP Mon Jul 18 11:10:00 EDT 2022 aarch64 aarch64 aarch64 GNU/Linux
+Linux c27-0200c 4.18.0-513.5.1.el8_9.aarch64 #1 SMP Fri Sep 29 05:50:39 EDT 2023 aarch64 aarch64 aarch64 GNU/Linux
 Singularity&gt; whoami
 a0XXXX
 Singularity&gt; cat /etc/os-release
@@ -133,7 +137,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
 &lt;&lt;..snip..&gt;&gt;
 </pre></div>
 </div>
-<p>「富岳」の OS は Redhat Enterprise Linux 8.6 であるにもかかわらず、コンテナ起動後はカーネルとユーザーはそのまま Ubuntu 20.04.2 LTS となっています。ここではホスト OS の Redhat 系のコマンドは使えず、イメージ内の Ubuntu のコマンドのみ利用可能です。ただし、カーネルはそのままなのでカーネルの機能やバージョンに強く依存するようなアプリケーションは動作に支障がでる可能性はあります。</p>
+<p>「富岳」の OS は Redhat Enterprise Linux 8.9 であるにもかかわらず、コンテナ起動後はカーネルとユーザーはそのまま Ubuntu 20.04.2 LTS となっています。ここではホスト OS の Redhat 系のコマンドは使えず、イメージ内の Ubuntu のコマンドのみ利用可能です。ただし、カーネルはそのままなのでカーネルの機能やバージョンに強く依存するようなアプリケーションは動作に支障がでる可能性はあります。</p>
 <p>次に ls すると以下のように、ホームディレクトリがそのまま見えています。ただし見えるのは自分自身のホームディレクトリに限られます。これを確認するのに ls -al /home や ls -al ~/.. 等を実行してみてください。自身以外のユーザーのホームディレクトリが見えていないことが分かります。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Singularity</span><span class="o">&gt;</span> <span class="n">ls</span> <span class="o">-</span><span class="n">l</span>
 <span class="n">total</span> <span class="mi">440172</span>
@@ -166,10 +170,13 @@ $ singularity exec from_sandbox.sif ls -l /foobar
 
 $ singularity exec ubuntu2020 cat /etc/os-release
 $ singularity exec docker://centos:latest cat /etc/passwd
+INFO:    Converting OCI blobs to SIF format
+INFO:    Starting build...
+&lt;&lt;..snip..&gt;&gt;
 </pre></div>
 </div>
-<p>コンテナ内の環境でコマンドが実行できました。また、ユーザー自身が作ったファイルが SIF へ変換したら root がオーナーとなっていることが分かります。</p>
-<p>リポジトリを指定した場合は SIF イメージへの変換は行わず、キャッシュにダウンロードしたイメージを展開して使います。そのため SIF を使うよりも起動はかなり遅くなります。実利用の際には原則として SIF イメージを利用し、sandbox からの実行や、Docker イメージ等の直接実行はテスト目的に留めてください。</p>
+<p>コンテナ内の環境でコマンドが実行できたと思います。また、ユーザー自身が作ったファイルが SIF へ変換したら root がオーナーとなっていることが分かります。</p>
+<p>リポジトリを指定した場合は上記の通り SIF イメージへの変換を行った上で実行されます。同じ指定をすると、キャッシュにダウンロードした元イメージとリポジトリを比較して更新があれば差分がダウンロードされ、再度 SIF へ変換されます。更新がなければ作られた SIF をそのまま使います。そのため直接 SIF を使うよりも起動は遅くなりますが、常に最新版を使いたい場合や、SIF イメージをファイル名で管理したくない場合には便利です。イメージの内容を固定したい場合や起動のオーバーヘッドを最小化したい場合には原則として SIF イメージを利用が推奨されます。sandbox からの実行や、Docker イメージ等の直接実行は、オーバーヘッドやメリット・デメリットに注意して利用してください。</p>
 <p>ホームディレクトリはコンテナ内でも共有されているので、そこにあるファイルをコンテナ内から利用してみましょう。SIF イメージファイルの先頭をコンテナ内のコマンドで見てみます。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif head -n 1 ubuntu2004.sif
 #!/usr/bin/env run-singularity
@@ -221,6 +228,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
 <li class="toctree-l1"><a class="reference internal" href="Creating.html">3. イメージの作成</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Execution.html">4. 実行時オプションと挙動</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Submitting.html">5. ジョブスケジューラとの連携</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">6. 「富岳」特有の問題</a></li>
 </ul>
 
 <div class="relations">
@@ -232,7 +240,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
   </ul></li>
 </ul>
 </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">クイック検索</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -240,7 +248,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
       <input type="submit" value="検索" />
     </form>
     </div>
-</div>
+</search>
 <script>document.getElementById('searchbox').style.display = "block"</script>
 
 
@@ -256,7 +264,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.2.6.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.3.7.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+
+<html lang="ja" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>6. 「富岳」特有の問題 &#8212; Singularity on FUGAKU  ドキュメント</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <script src="_static/documentation_options.js?v=c033477b"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/translations.js?v=4dbe4bdc"></script>
+    <link rel="index" title="索引" href="genindex.html" />
+    <link rel="search" title="検索" href="search.html" />
+    <link rel="prev" title="5. ジョブスケジューラとの連携" href="Submitting.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="fugaku-specific">
+<span id="id1"></span><h1><span class="section-number">6. </span>「富岳」特有の問題<a class="headerlink" href="#fugaku-specific" title="Link to this heading">¶</a></h1>
+<p>「富岳」は汎用性を重視して作られたスパコンですが、様々な理由で制約があります。ここまでの解説にも記述はありますが Singularity に習熟されているユーザー向けに「富岳」特有の制約について抽出してまとめました。</p>
+<section id="id2">
+<h2><span class="section-number">6.1. </span>利用可能なバージョン<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<p>2024年6月現在、「富岳」で利用可能な Singularity のバージョンは以下の通りです。</p>
+<ul class="simple">
+<li><p>3.11-7 /opt/singularitypro311/bin/singularity にインストールされています。</p></li>
+<li><p>4.1.2-2 /opt/singularitypro41/bin/singularity にインストールされています。</p></li>
+</ul>
+<p>デフォルト(/usr/bin/singularity)は 4.1.2 へのリンクになっていて、3.11 が必要になることはほとんどないと思われますが、必要な場合はフルパス指定で実行するか、PATH を通してください。追加の設定変更は不要です。</p>
+<p>ログインノードとコンピュートノード両方に同じバージョンがインストールされていますが、x86_64 と aarch64 の違いに注意してください。また、コンピュートノードで dockerhub などから取得する際に aarch64 のイメージが存在しない場合、x86_64 のイメージを取得してしまいます。コンテナはハードウエアのエミュレーションを行わないため、アーキテクチャが異なるイメージを利用できません。コンバートや電子署名などのイメージ自体のハンドリングなど、コンテナ起動を伴わない処理はどちらでも実行可能です。できた SIF のアーキテクチャは以下のようにして確認できます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity sif list sample-arm.sif
+------------------------------------------------------------------------------
+ID   |GROUP   |LINK    |SIF POSITION (start-end)  |TYPE
+------------------------------------------------------------------------------
+1    |1       |NONE    |32176-32362               |Def.FILE
+2    |1       |NONE    |32362-33398               |JSON.Generic
+3    |1       |NONE    |33398-33594               |JSON.Generic
+4    |1       |NONE    |36864-51032064            |FS (Squashfs/*System/arm64)
+</pre></div>
+</div>
+<p>ID=4 の TYPE にアーキテクチャが記載されています。</p>
+</section>
+<section id="sandbox">
+<h2><span class="section-number">6.2. </span>sandbox イメージ利用に関する制約<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
+<p>sandbox イメージはコンテナイメージを既存のファイルシステム内に展開したものです。SIF イメージを使っていても、--fakeroot を指定すると $TMPDIR に sandbox イメージを展開して動きます。そして --fakeroot を用いてユーザー名前空間を分離すると、共有ファイルシステム上ではユーザーのマッピング情報がストレージを構成するサーバーと共有できず、書き込みができないという問題があります。すなわち、ホームディレクトリ上に sandbox イメージを作っても、そこで --fakeroot, --writable オプションを使うことができません。</p>
+<p>また、--fakeroot で Singularity はイメージのビルドを行うにあたり、やはり $TMPDIR 以下に sandbox イメージを作成します。それを最終的に SIF へ変換するという挙動になります。そのため、ユーザーがイメージの build を行う際は sandbox を使っていることになります。</p>
+<section id="worktmp">
+<h3><span class="section-number">6.2.1. </span>/worktmp を用いた回避方法<a class="headerlink" href="#worktmp" title="Link to this heading">¶</a></h3>
+<p>通常の環境では $TMPDIR は /var/tmp などを指すのが普通なのですが、「富岳」ではホームディレクトリを指すように設定されています。そのため、上記の問題に直面してしまいます。これを回避するためには、ノードに搭載されたローカルストレージ、特にコンピュートノードでは /worktmp を利用することになります。イメージのビルドを含む --fakeroot を用いた動作をする場合は以下のようにしてから利用してください。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ export TMPDIR=/worktmp
+</pre></div>
+</div>
+<p>ただし /worktmp は shmfs といい、メインメモリの半分程度をファイルシステムとして使えるようにしているものです。ノードあたり 32GB のメモリしか持たない「富岳」のコンピュートノード上で、この方法でイメージのビルドを行う場合、最大のイメージサイズは 10GB 前後と予想されます。</p>
+</section>
+<section id="proot">
+<span id="id3"></span><h3><span class="section-number">6.2.2. </span>proot を用いた回避方法<a class="headerlink" href="#proot" title="Link to this heading">¶</a></h3>
+<p>ユーザーネームスペースを切り替える proot コマンドというユーティリティがあります。これが PATH にあると --fakeroot や /worktmp を用いずにホームディレクトリ上でイメージの作成が行えるため、10GB を大幅に超えたサイズのイメージ作成ができます。Singularity は PATH に proot を見つけると、--fakeroot オプションを指定していない限り、proot を利用するようになります。ただし、機能的にいくつか制約があります。</p>
+<p>proot は標準でインストールされていないため、以下の手順で proot 本体と Samba Project の talloc を入手してビルドします。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ git clone https://github.com/proot-me/proot.git
+$ cd proot
+$ wget https://www.samba.org/ftp/talloc/talloc-2.4.2.tar.gz
+$ tar xzf talloc-2.4.2.tar.gz
+$ cd talloc-2.4.2
+$ ./configure --disable-python
+$ gcc -Ilib/replace -Ibin/default -D__STDC_WANT_LIB_EXT1__=1 -c talloc.c  -o talloc.o
+$ cd ../src
+</pre></div>
+</div>
+<p>ここで、GNUMakefile を編集して今回の目的では不要な Python 関連の記述を削除し、talloc.o がリンクされるようにします。デフォルトではダイナミックリンクですが、コンテナ内で動くようスタティックリンクされている必要があります。変更点は以下のようになります。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>--- a/src/GNUmakefile
++++ b/src/GNUmakefile
+@@ -16,15 +16,18 @@ OBJDUMP  = $(CROSS_COMPILE)objdump
+ PYTHON   = python3
+
+ HAS_SWIG := $(shell swig -version 2&gt;/dev/null)
+-PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c &quot;import sys; print(sys.version_info.major)&quot; 2&gt;/dev/null)
+-PYTHON_EMBED = $(shell ${PYTHON} -c &quot;import sys; print(&#39;--embed&#39; if sys.hexversion &gt; 0x03080000 else &#39;&#39;)&quot; 2&gt;/dev/null)
+-HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2&gt;/dev/null)
+
+ CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
+ CFLAGS   += -g -Wall -Wextra -O2
+ CFLAGS   += $(shell pkg-config --cflags talloc)
+ LDFLAGS  += -Wl,-z,noexecstack
+-LDFLAGS  += $(shell pkg-config --libs talloc)
++LDFLAGS  += ../talloc-2.4.2/talloc.o
+</pre></div>
+</div>
+<p>変更したら、必要な proot のみをビルドし、PATH の通った先にインストールしておきます。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ make proot
+$ mkdir -p ~/.local/$(arch)/bin
+$ cp proot ~/.local/$(arch)/bin
+$ chmod 755 ~/.local/$(arch)/bin/proot
+</pre></div>
+</div>
+<p>ログインノードとコンピュートノードでは使えるバイナリが異なるので、この例ではアーキテクチャ別のディレクトリをインストール先にしています。そのため PATH の通し方も次のようにしてください。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>export PATH=~/.local/$(arch)/bin:$PATH
+</pre></div>
+</div>
+<p>実際に --fakeroot なしでイメージのビルドをしてみます。singularity は自動的に proot を検出します。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat p.def
+Bootstrap: localimage
+From: alma.sif
+%post
+        yum -y install python3-pip
+        pip3 install numpy scipy
+        yum clean all
+
+$ singularity build p.sif p.def
+INFO:    Using proot to build unprivileged. Not all builds are supported. If build fails, use --remote or --fakeroot.
+INFO:    Starting build...
+&lt;&lt;..snip..&gt;&gt;
+INFO:    Creating SIF file...
+INFO:    Build complete: p.sif
+</pre></div>
+</div>
+<p>なお、現時点で proot を使う場合の制約は以下の通りです。上記のメッセージにもある通り、うまくいかない場合は --fakeroot を使う必要があります。</p>
+<ol class="arabic simple">
+<li><p>定義ファイルの Bootstrap として yum, debootstrap, arch, zypper などが指定できません。localimage, library, oras, docker などは利用可能です。</p></li>
+<li><p>定義ファイルの記述として %pre, %setup など、コンテナ起動前の処理が利用できません。</p></li>
+<li><p>proot が作る root 権限はエミュレートされたものなので、完全な root 権限は発揮できません。</p></li>
+</ol>
+</section>
+</section>
+<section id="permission">
+<h2><span class="section-number">6.3. </span>ホームディレクトリの permission に関する制約<a class="headerlink" href="#permission" title="Link to this heading">¶</a></h2>
+<p>一般ユーザーのホームディレクトリは、以下のようなパーミッション設定になっていて、fugaku グループに所属していないユーザーはアクセスができません。</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ ls -dl /vol0004/mdt0/home
+drwxr-x--- 281 root fugaku 16384 Feb 23 17:50 /vol0004/mdt0/home
+$ ls -dl /vol0004/mdt0/home/uXXXXX
+drwx------ 8 uXXXXX fugaku 4096 Apr 25 18:45 /vol0004/mdt0/home/uXXXXXX
+</pre></div>
+</div>
+<p>一般ユーザーはサブグループとして fugaku グループに属しているものの、プライマリグループではありません。--fakeroot が用いる Linux カーネルの UID 名前空間分離機能の制約として、グループ権限はプライマリグループのみマッピングされるため、コンテナ内のユーザーは fugaku グループへのアクセス権限を持つことができません。そのためホームディレクトリのマウントができず、failed to mount /home/uXXXXX to /root: permission denied というエラーとなってしまいます。これを回避する方法は２つあります。</p>
+<ol class="arabic simple">
+<li><p>事前に newgrp fugaku として、プライマリグループを fugaku グループとしてから実行する。ただし、ファイルのオーナーやグループ権限は fugaku になってしまう。</p></li>
+<li><p>この問題に対処するため SingularityPRO 3.11-4 で追加された --no-setgroups オプションを利用する。</p></li>
+</ol>
+<p>どちらでも動作に支障がないことは確認されています。</p>
+</section>
+<section id="mpi">
+<h2><span class="section-number">6.4. </span>MPI によるマルチノード並列について<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
+<p>「富岳」ではスケジューラが確保したノード間の通信などに制約があるため、ユーザー自身で用意した MPI でのノード間並列は原則使用できません。 <a class="reference internal" href="Execution.html#multinode-parallel"><span class="std std-ref">「富岳」環境でのマルチノード並列</span></a> を参照してください。</p>
+</section>
+<section id="oci">
+<h2><span class="section-number">6.5. </span>OCIモードについて<a class="headerlink" href="#oci" title="Link to this heading">¶</a></h2>
+<p>Singularity PRO 4.1 から利用可能になった OCI 互換の動作が実現できる OCI モードについてですが、セキュリティ対策と思われる利用制限によりイメージのビルド及び実行のどちらもできない状態です。</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Singularity on FUGAKU</a></h1>
+
+
+
+
+
+
+
+
+<h3>ナビゲーション</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">1. Singularity とは</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">2. Singularity 利用の手順</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">3. イメージの作成</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">4. 実行時オプションと挙動</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">5. ジョブスケジューラとの連携</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">6. 「富岳」特有の問題</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id2">6.1. 利用可能なバージョン</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sandbox">6.2. sandbox イメージ利用に関する制約</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#permission">6.3. ホームディレクトリの permission に関する制約</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mpi">6.4. MPI によるマルチノード並列について</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#oci">6.5. OCIモードについて</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="Submitting.html" title="前の章へ"><span class="section-number">5. </span>ジョブスケジューラとの連携</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">クイック検索</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="検索" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021-, RIKEN R-CCS.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.3.7.
+    &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
+    </div>
+  </body>
+</html>
