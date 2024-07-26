@@ -66,7 +66,7 @@ docker 形式のリポジトリから SIF ファイルを生成します。一�
 
 ::
 
-    $ singularity build --sandbox ubunt2004 docker://ubuntu:20.04
+    $ singularity build --sandbox ubuntu2004 docker://ubuntu:20.04
     INFO:    Starting build...
     Getting image source signatures
     Copying blob 32d7611b468c skipped: already exists

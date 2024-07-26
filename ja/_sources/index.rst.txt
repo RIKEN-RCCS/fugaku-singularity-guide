@@ -5,10 +5,10 @@
    :maxdepth: 2
    :numbered:
    
+   Preface.rst
    Introduction.rst
    GettingStarted.rst
    Creating.rst
    Execution.rst
    Submitting.rst
    Appendix.rst
-

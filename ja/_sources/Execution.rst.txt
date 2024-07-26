@@ -289,10 +289,11 @@ MPI 並列については、ノード内での並列までは大きな問題が�
 ::
 
     Bootstrap: docker
-    From: redhat/ubi8:8.8
+    From: redhat/ubi8:8.9
     %files
     %post
-      dnf --noplugins --releasever=8.8 -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+      echo 'timeout=14400' >> /etc/yum.conf
+      dnf --noplugins --releasever=8.9 -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
       # BEGIN Fujitsu TCS Part
       cat <<EOF > /etc/yum.repos.d/fugaku.repo
     [FUGAKU-AppStream]
@@ -306,9 +307,9 @@ MPI 並列については、ノード内での並列までは大きな問題が�
     enabled=1
     gpgcheck=0
     EOF
-      dnf --noplugins --releasever=8.8 -y install xpmem libevent tcl less hwloc openssh-clients gcc-c++ elfutils-libelf-devel FJSVpxtof FJSVpxple FJSVpxpsm FJSVpxkrm FJSVxoslibmpg papi-devel
+      dnf --noplugins --releasever=8.9 -y install xpmem libevent tcl less hwloc openssh-clients gcc-c++ elfutils-libelf-devel FJSVpxtof FJSVpxple FJSVpxpsm FJSVpxkrm FJSVxoslibmpg papi-devel
       dnf --noplugins clean all
-    # END Fujitsu TCS Part
+      # END Fujitsu TCS Part
 
 必要なパッケージ群はこれでインストールできます。手元にある MPI のサンプルコードのバイナリをコンテナ内でノード間並列してみましょう。
 以下では、次のように2ノードのインタラクティブジョブとして投入して動作確認をしています。
