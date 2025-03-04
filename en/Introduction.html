@@ -5,15 +5,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>2. What is Singularity? &#8212; Singularity on FUGAKU  documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <title>3. What is Singularity? &#8212; Singularity on FUGAKU  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="3. Procedure for using Singularity" href="GettingStarted.html" />
+    <link rel="next" title="4. Procedure for using Singularity" href="GettingStarted.html" />
     <link rel="prev" title="1. Preface" href="Preface.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -33,7 +34,7 @@
           <div class="body" role="main">
             
   <section id="singularity">
-<h1><span class="section-number">2. </span>What is Singularity?<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
+<h1><span class="section-number">3. </span>What is Singularity?<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
 <p>Singularity is an open source Linux container implementation developed in 2015 to enhance the convenience of supercomputers at the Lawrence Berkeley National Laboratory in the United States.</p>
 <p>Currently Singularity is being developed separately by Sylabs, a company founded by the developers of the product, and by an independent community. The free of charge open source version is called the Community Edition (CE) and is published on Github under a modified BSD License (with some code under the Apache License). In contrast, there is Singularity PRO, which is based on CE with well-tested functionality and paid services such as security support and bug fix backports, provided by Sylabs, the main developer of the software. “FUGAKU” uses Singularity PRO for security and support reasons.</p>
 <p>With Singularity, of the system configuration required to execute an application, the parts other than the kernel can be independently configured and maintained, and can be integrated with the application, so if the environment has the same architecture, the entire execution environment can be carried.</p>
@@ -46,7 +47,7 @@
 <li><p>Secure operation is possible because no root authority or daemon is involved when creating an image or executing a container.</p></li>
 </ol>
 <section id="id1">
-<h2><span class="section-number">2.1. </span>Container<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">3.1. </span>Container<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
 <p>Containers are one of the virtualization technologies. Whereas full virtualization installs and runs the entire OS on a hardware emulator, containers share a host-side kernel and only switch between user environments. Therefore, there are following benefits.</p>
 <ol class="arabic simple">
 <li><p>Since it runs on a booted kernel, there is no need to boot the entire OS as in full virtualization, booting is fast and there is little overhead.</p></li>
@@ -58,13 +59,13 @@
 <p>The contents of the container are no different from the existing OS environment. Therefore, it is not possible to bring in applications of different architectures; it is not possible to run an image created on ARM on an x86_64 environment, or vice versa. Also, since the kernel is from the host, it may not be possible to run applications that are strongly dependent on the kernel version or that require additional drivers to be installed.</p>
 </section>
 <section id="id2">
-<h2><span class="section-number">2.2. </span>Image<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">3.2. </span>Image<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
 <p>To create an image of a container, deploy an OS environment separate from the host side in an empty file system, and build the required runtime and application environment. The resulting file system can be saved individually as a file or retrieved from a repository on the network.</p>
 <p>An image of Singularity consists of a single file in a format called SIF (Singularity Image Format). Therefore, the user can have an image in which the application is installed for each runtime in one file, and handling such as saving and transferring is intuitive and easy.</p>
 <p>On the other hand, Singularity does not require that the image be created in SIF format. You can also run container images saved in other formats directly.</p>
 </section>
 <section id="id3">
-<h2><span class="section-number">2.3. </span>Execution<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">3.3. </span>Execution<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
 <p>Basically, launching a container means expanding and mounting an image and preparing the application execution environment, and it has a different meaning from launching an application in it. However, Singularity integrates the launch of the container and the launch of the application, so you can run it as if you were dealing with a statically linked binary, without being aware that you are using the container.</p>
 <p>There are some following ways to run your application inside a container with Singularity:</p>
 <ol class="arabic simple">
@@ -93,20 +94,30 @@
 
 
 
-<h3>Navigation</h3>
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Preface.html">1. Preface</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">2. What is Singularity?</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#id1">2.1. Container</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id2">2.2. Image</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id3">2.3. Execution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Preface.html#id2">2. 本文書について</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">3. What is Singularity?</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">3.1. Container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">3.2. Image</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">3.3. Execution</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">3. Procedure for using Singularity</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Creating.html">4. Creating an image</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Execution.html">5. Runtime options and behavior</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Submitting.html">6. Cooperation with job scheduler</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Appendix.html">7. FUGAKU specific topics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">4. Procedure for using Singularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">5. Creating an image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">6. Runtime options and behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">7. Cooperation with job scheduler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">8. FUGAKU specific topics</a></li>
 </ul>
 
 <div class="relations">
@@ -114,20 +125,10 @@
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="Preface.html" title="previous chapter"><span class="section-number">1. </span>Preface</a></li>
-      <li>Next: <a href="GettingStarted.html" title="next chapter"><span class="section-number">3. </span>Procedure for using Singularity</a></li>
+      <li>Next: <a href="GettingStarted.html" title="next chapter"><span class="section-number">4. </span>Procedure for using Singularity</a></li>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -142,7 +143,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.4.7.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 8.2.3.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

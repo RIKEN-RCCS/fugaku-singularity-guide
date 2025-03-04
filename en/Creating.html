@@ -5,16 +5,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>4. Creating an image &#8212; Singularity on FUGAKU  documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <title>5. Creating an image &#8212; Singularity on FUGAKU  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="5. Runtime options and behavior" href="Execution.html" />
-    <link rel="prev" title="3. Procedure for using Singularity" href="GettingStarted.html" />
+    <link rel="next" title="6. Runtime options and behavior" href="Execution.html" />
+    <link rel="prev" title="4. Procedure for using Singularity" href="GettingStarted.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -33,13 +34,13 @@
           <div class="body" role="main">
             
   <section id="creating">
-<span id="id1"></span><h1><span class="section-number">4. </span>Creating an image<a class="headerlink" href="#creating" title="Link to this heading">¶</a></h1>
+<span id="id1"></span><h1><span class="section-number">5. </span>Creating an image<a class="headerlink" href="#creating" title="Link to this heading">¶</a></h1>
 <p>Learn how to create an SIF image for execution. There are some methods depending on the setup you need, so choose the one that suits your situation.</p>
 <section id="sandbox">
-<h2><span class="section-number">4.1. </span>How to use a sandbox<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.1. </span>How to use a sandbox<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
 <p>When building a system by directly editing an image, the actual work is done by manually. This is convenient for simple image creation and modification, but there are problems such as no work history.</p>
 <section id="id2">
-<h3><span class="section-number">4.1.1. </span>If you don’t need to start the container<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">5.1.1. </span>If you don’t need to start the container<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <p>As already mentioned in the previous section, if the user brings files etc. Into the sandbox or edits the settings etc.,those could be converted to SIF images. This is useful way if you just need to expand the application or reference data that has already been created. The image of the work procedure will be as follows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox ubi_py38 docker://registry.access.redhat.com/ubi8/python-38
 $ tar xvzf ~/application.tar.gz -C ubi_py38
@@ -66,7 +67,7 @@ $ singularity exec appl.sif /usr/local/bin/application
 <p>If you can build an environment just by importing the created file in this way, image creation will be completed very easily.</p>
 </section>
 <section id="id3">
-<h3><span class="section-number">4.1.2. </span>When starting a container and changing the system<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">5.1.2. </span>When starting a container and changing the system<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <p>All files and directories in sandbox that were originally owned by root were owned by the user. If you start the container with –writable option, it will start in the same state about the file owner and you can edit the system file with user privileges.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity shell --writable ubuntu2004
 Singularity&gt; touch /hogefuga
@@ -133,7 +134,7 @@ $ singularity build ~/from-sandbox.sif /worktmp/ubuntu-sandbox
 </section>
 </section>
 <section id="id4">
-<h2><span class="section-number">4.2. </span>Custom image with definition file<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.2. </span>Custom image with definition file<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
 <p>All operation of image creation can be described in a definition file, for example, where to get the base image, bringing in files, set up the system inside the container, define the execution environment, etc. Properly setting the execution environment could greatly improve the convenience to use the container.</p>
 <p>The definition file used to be called as recipe file, and the name has not been decided, but now it is officially a definition file, and the extension is def. Please refer to the official documentation for more details, as this is just a simple usage.</p>
 <p>The definition file consists of four parts: header, construction, execution environment definition, and description. however, it works with at least the header.</p>
@@ -181,7 +182,7 @@ $ singularity build --fakeroot ~/from_def.sif example.def
 <p>The time required varies depending on the processing content, but from_def.sif should be completed. If you cannot change $TMPDIR, you can specify only the image expansion destination of singularity by setting $SINGULARITY_TMPDIR.</p>
 </section>
 <section id="id5">
-<h2><span class="section-number">4.3. </span>Embedding the execution configuration<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.3. </span>Embedding the execution configuration<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
 <p>In the definition file of the completed image, %runscript contains the command line 'python $'. This means that python would be started with the passed options at the same time as the container is started. In other words, the following two do the same thing.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec from_def.sif python hoge.py 1024
 $ ./from_def.sif hoge.py 1024
@@ -191,7 +192,7 @@ $ ./from_def.sif hoge.py 1024
 <p>In addition to this, there are %app for bundling multiple applications and using them properly, and %help for writing a brief explanation. See documentation for details. If you manage this definition file in the repository, it will be clear how the calculation was performed with an image how it created, and it will be easy to reproduce even if you create the same environment again. However, if you use a tag like 'latest' in From: at the initial image building, the content will change each time you build the image.</p>
 </section>
 <section id="id6">
-<h2><span class="section-number">4.4. </span>Creating an image by submitting a job<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.4. </span>Creating an image by submitting a job<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
 <p>Let’s put these tasks into a job for FUGAKU. Create a simple script like the one below and submit the job.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat job.sh
 #!/bin/bash
@@ -206,7 +207,7 @@ $ pjsub -L &quot;rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00&quot; .
 <p>You can create an image in the same way.</p>
 </section>
 <section id="tcsds">
-<h2><span class="section-number">4.5. </span>Importing TCSDS into a container<a class="headerlink" href="#tcsds" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.5. </span>Importing TCSDS into a container<a class="headerlink" href="#tcsds" title="Link to this heading">¶</a></h2>
 <p>FUGAKU has its own repository, language environment and library.You can embed a specific version of the runtime in the container image by getting the package from it and installing it.At the moment, only the rpm file is prepared, so it cannot be installed on Debian OS such as Ubuntu,so we will show you how to install it on RHEL and its derivative UBI etc.UBI is the subject here for the sake of simplicity, but please note that UBI may be difficult to use in practice because development packages etc. are only supplied in a limited way.</p>
 <p>The repository where TCSDS is located is /home/apps/singularity/tcs/, but documents are also included, so please refer to it as necessary. However, it is inconvenient if it is under /home to import it into the container, so we will devise it. first, prepare the following repository file.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat tcs.repo
@@ -329,11 +330,11 @@ $ singularity build -f -B /home/apps/singularity:/opt/repo ubi_tcs.sif direct_bu
 </div>
 </section>
 <section id="id7">
-<h2><span class="section-number">4.6. </span>Image management by digital signature<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.6. </span>Image management by digital signature<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
 <p>Singularity SIF Images are managed in one file, so if you change the file name, you will not be able to trace who created the image and how. This can cause security issues as well as management trouble. Therefore, by adding a digital signature to the image by the creator, it is possible to prevent problems which image being altered or replaced.</p>
 <p>Digital signatures use the public key mechanism. First, calculate the hash value of the image, then encrypt it with the private key, and add (sign) it to the image. The public key should be managed in secure, separately from the image. The user who receives the image calculates the hash value of the image and decryption the signature cryptography with the creator’s public key to verify whether it is exactly same image signed by the creator.</p>
 <section id="id8">
-<h3><span class="section-number">4.6.1. </span>Creating a key pair<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">5.6.1. </span>Creating a key pair<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
 <p>First, create a key pair of private and public keys. Use the 'key' command. You will be asked if you want to push to the keystore on the way, but for now, leave it as no. even if it is Y, the key pair should be created.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity key newpair
 Enter your name (e.g., John Doe) : Fugaku Tarou
@@ -369,7 +370,7 @@ $ ls -l ~/.singularity/sypgp
 <p>Let’s use this to sign the image and verify it.</p>
 </section>
 <section id="id9">
-<h3><span class="section-number">4.6.2. </span>How to sign and verify<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">5.6.2. </span>How to sign and verify<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
 <p>To sign with singularity, use the 'sign' command. only for SIF images.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity sign ubuntu2004.sif
 Enter key passphrase :
@@ -418,44 +419,44 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
 
 
 
-<h3>Navigation</h3>
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Preface.html">1. Preface</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Introduction.html">2. What is Singularity?</a></li>
-<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">3. Procedure for using Singularity</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">4. Creating an image</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#sandbox">4.1. How to use a sandbox</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id4">4.2. Custom image with definition file</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id5">4.3. Embedding the execution configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id6">4.4. Creating an image by submitting a job</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#tcsds">4.5. Importing TCSDS into a container</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id7">4.6. Image management by digital signature</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Preface.html#id2">2. 本文書について</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">3. What is Singularity?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">4. Procedure for using Singularity</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">5. Creating an image</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sandbox">5.1. How to use a sandbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">5.2. Custom image with definition file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">5.3. Embedding the execution configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id6">5.4. Creating an image by submitting a job</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tcsds">5.5. Importing TCSDS into a container</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id7">5.6. Image management by digital signature</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Execution.html">5. Runtime options and behavior</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Submitting.html">6. Cooperation with job scheduler</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Appendix.html">7. FUGAKU specific topics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">6. Runtime options and behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">7. Cooperation with job scheduler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">8. FUGAKU specific topics</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="GettingStarted.html" title="previous chapter"><span class="section-number">3. </span>Procedure for using Singularity</a></li>
-      <li>Next: <a href="Execution.html" title="next chapter"><span class="section-number">5. </span>Runtime options and behavior</a></li>
+      <li>Previous: <a href="GettingStarted.html" title="previous chapter"><span class="section-number">4. </span>Procedure for using Singularity</a></li>
+      <li>Next: <a href="Execution.html" title="next chapter"><span class="section-number">6. </span>Runtime options and behavior</a></li>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -470,7 +471,7 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.4.7.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 8.2.3.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

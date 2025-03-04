@@ -5,16 +5,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>5. Runtime options and behavior &#8212; Singularity on FUGAKU  documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <title>6. Runtime options and behavior &#8212; Singularity on FUGAKU  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="6. Cooperation with job scheduler" href="Submitting.html" />
-    <link rel="prev" title="4. Creating an image" href="Creating.html" />
+    <link rel="next" title="7. Cooperation with job scheduler" href="Submitting.html" />
+    <link rel="prev" title="5. Creating an image" href="Creating.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -33,12 +34,12 @@
           <div class="body" role="main">
             
   <section id="id1">
-<h1><span class="section-number">5. </span>Runtime options and behavior<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
+<h1><span class="section-number">6. </span>Runtime options and behavior<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
 <p>Here, we will introduce some options that are often used when running Singularity, and some useful behaviors.</p>
 <section id="id2">
-<h2><span class="section-number">5.1. </span>Incorporating the environment on the host side<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.1. </span>Incorporating the environment on the host side<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
 <section id="id3">
-<h3><span class="section-number">5.1.1. </span>Handling of environment variables<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">6.1.1. </span>Handling of environment variables<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <p>We have seen that access to files in your home directory is enabled by default. What about environment variables? If you display the environment variables in the container as follows, you can see that the variables on the host side at runtime are inherited.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif env
 </pre></div>
@@ -71,7 +72,7 @@ $ cat job.sh
 <p>This makes it easy to change conditions in different environments without having to recreate the image.</p>
 </section>
 <section id="id4">
-<h3><span class="section-number">5.1.2. </span>Directory binding<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">6.1.2. </span>Directory binding<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <p>When you start a singularity container, it binds your own home directory, /tmp, /var/tmp, /dev, /proc, /sys. inside the container by default. It also binds the current directory at startup, but only if a directory with the same name exists in the container. If you boot the image from a directory that does not exist in the container, you may want to access other directories from within the container, as well as the current directory. For example, applications and data already installed on the host side may be redundant or huge to be imported into the image, or you may want to use the home directory of another user who shares the file.</p>
 <p>In this case, you can specify additional directories to bind with the -B option at boot time. you can specify different paths by separating the directory on the host side and the mount point in the container with ':' , but if you omit the mount destination, it will be bound to the directory with the same name.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif -B /worktmp:/scratch ls -al /scratch
@@ -86,7 +87,7 @@ $ cat job.sh
 </section>
 </section>
 <section id="id5">
-<h2><span class="section-number">5.2. </span>Instantiation and interactive processing<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.2. </span>Instantiation and interactive processing<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
 <p>So far, we have integrated the launch of the container and the launch of the application and used it so that the user can launch the application directly without being aware of the container. However, with this usage, when the started application is closed, the container will be closed at the same time. Of course, you can restart it, but even if it is a lightweight container implementation, if you repeat it many times, the overhead will be wasted. Also, can singularity not be used for service operations such as web servers? To accommodate these uses, singularity has a feature called instantiation that allows you to maintain containers.</p>
 <p>Start and instantiate only the container as shown below. The last string is the instance name, which must be a name that is not covered by what is already running. Make sure it is started correctly with the list subcommand.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity instance start ubuntu2004.sif Focal
@@ -121,7 +122,7 @@ done
 </div>
 </section>
 <section id="id6">
-<h2><span class="section-number">5.3. </span>Direct execution with specified repository<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.3. </span>Direct execution with specified repository<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
 <p>Recall that we were getting a docker image when we created the sif image. during pull and build, the layer files that make up the docker image are cached under ~/.singularity. The behavior of this cache does not change even if you specify oras or library as the target. And singularity can do this directly.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec docker://ubuntu:latest head -n 5 /etc/os-release
 INFO:    Converting OCI blobs to SIF format
@@ -172,7 +173,7 @@ $ singularity cache clean
 <p>These caches are used not only at runtime, but also at build/pull time.</p>
 </section>
 <section id="overlay">
-<h2><span class="section-number">5.4. </span>Overlay option<a class="headerlink" href="#overlay" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.4. </span>Overlay option<a class="headerlink" href="#overlay" title="Link to this heading">¶</a></h2>
 <p>The SIF image entity is SquashFS(almost tar+gzip), so it is read-only at runtime. However, there are cases when you want to temporarily place files in the image, or when you need an image that is only partially different, or when you want to have only the differences because having multiple images that contain everything is a waste of capacity. Singularity provides 2 solutions.</p>
 <ol class="arabic simple">
 <li><p>The –writable-tmpfs option that makes memory-derived tmpfs temporarily writable by superimposing them on the read-only image.</p></li>
@@ -238,10 +239,10 @@ $ singularity sif del 4 ubuarm20.sif
 <p>These operations can also be performed on the login node, so there is no need to submit a job for this purpose. Overlay also contributes to reducing the metadata access load on the shared file system, especially when there are many small files, since I/O is completed within a single file.</p>
 </section>
 <section id="mpi">
-<h2><span class="section-number">5.5. </span>MPI parallelism<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.5. </span>MPI parallelism<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
 <p>Regarding mpi parallelism, there are no major problems up to parallelism within a node, but since there are various points to be solved with multi-node parallelism, additional work and configuration is required at image creation and runtime.</p>
 <section id="id7">
-<h3><span class="section-number">5.5.1. </span>Parallel within a node<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">6.5.1. </span>Parallel within a node<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
 <p>In parallel within a node, the process manager launches the application directly, so processing does not extend outside the container. While launching the container with singularity, launch the mpi application with mpirun (mpiexec) etc. of course, it is assumed that the required mpi runtime is in the container. An example command looks like this:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec mpi-apps.sif mpiexec -np 8 ~/myapps/hoge inputfile
 </pre></div>
@@ -249,7 +250,7 @@ $ singularity sif del 4 ubuarm20.sif
 <p>Only one container is started, and multiple processes run in it.</p>
 </section>
 <section id="id8">
-<h3><span class="section-number">5.5.2. </span>Overview of multi-node parallel<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">6.5.2. </span>Overview of multi-node parallel<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
 <p>When multi-node parallel application is started in the same way as parallel in a node, the process manager will be started to other nodes by ssh or PMI. However, since the container isn’t started on the destination node, the application almost always fails to start with error. Therefore, we address this by having the MPI process manager include container startup, not only application startup. An example of how to start it is as follows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mpiexec -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
 </pre></div>
@@ -258,7 +259,7 @@ $ singularity sif del 4 ubuarm20.sif
 <p>Furthermore, compatibility with interconnects used for RDMA communication is necessary. In Singularity, /dev is shared with the host, so the devices themselves remain visible. However, the software stack and sockets required for device utilization must be prepared within the container. Additionally, by retrieving various information about nodes the scheduler allocated to jobs from environment variables, and passing them to the actual MPI finally enables multi-node MPI parallel.</p>
 </section>
 <section id="multinode-parallel">
-<span id="id9"></span><h3><span class="section-number">5.5.3. </span>Multi-node parallel on FUGAKU<a class="headerlink" href="#multinode-parallel" title="Link to this heading">¶</a></h3>
+<span id="id9"></span><h3><span class="section-number">6.5.3. </span>Multi-node parallel on FUGAKU<a class="headerlink" href="#multinode-parallel" title="Link to this heading">¶</a></h3>
 <p>When creating and executing an image that incorporates MPI included in TCS by Fujitsu, the necessary steps are as follows. In the image creation section, we installed TCSDS from a directory that was mounted. However, since a network accessible repository is also available, we will use it here. When describing only the part of the definition file that prepares the execution environment, it looks as follows:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Bootstrap</span><span class="p">:</span> <span class="n">docker</span>
 <span class="n">From</span><span class="p">:</span> <span class="n">redhat</span><span class="o">/</span><span class="n">ubi8</span><span class="p">:</span><span class="mf">8.9</span>
@@ -348,43 +349,43 @@ Hello world from processor f34-0000c, rank 1 out of 2 processors
 
 
 
-<h3>Navigation</h3>
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Preface.html">1. Preface</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Introduction.html">2. What is Singularity?</a></li>
-<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">3. Procedure for using Singularity</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Creating.html">4. Creating an image</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">5. Runtime options and behavior</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#id2">5.1. Incorporating the environment on the host side</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id5">5.2. Instantiation and interactive processing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id6">5.3. Direct execution with specified repository</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#overlay">5.4. Overlay option</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#mpi">5.5. MPI parallelism</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Preface.html#id2">2. 本文書について</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">3. What is Singularity?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">4. Procedure for using Singularity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">5. Creating an image</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">6. Runtime options and behavior</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id2">6.1. Incorporating the environment on the host side</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">6.2. Instantiation and interactive processing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id6">6.3. Direct execution with specified repository</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overlay">6.4. Overlay option</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mpi">6.5. MPI parallelism</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Submitting.html">6. Cooperation with job scheduler</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Appendix.html">7. FUGAKU specific topics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">7. Cooperation with job scheduler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">8. FUGAKU specific topics</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="Creating.html" title="previous chapter"><span class="section-number">4. </span>Creating an image</a></li>
-      <li>Next: <a href="Submitting.html" title="next chapter"><span class="section-number">6. </span>Cooperation with job scheduler</a></li>
+      <li>Previous: <a href="Creating.html" title="previous chapter"><span class="section-number">5. </span>Creating an image</a></li>
+      <li>Next: <a href="Submitting.html" title="next chapter"><span class="section-number">7. </span>Cooperation with job scheduler</a></li>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -399,7 +400,7 @@ Hello world from processor f34-0000c, rank 1 out of 2 processors
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.4.7.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 8.2.3.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

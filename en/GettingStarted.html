@@ -5,16 +5,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>3. Procedure for using Singularity &#8212; Singularity on FUGAKU  documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <title>4. Procedure for using Singularity &#8212; Singularity on FUGAKU  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="4. Creating an image" href="Creating.html" />
-    <link rel="prev" title="2. What is Singularity?" href="Introduction.html" />
+    <link rel="next" title="5. Creating an image" href="Creating.html" />
+    <link rel="prev" title="3. What is Singularity?" href="Introduction.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -33,7 +34,7 @@
           <div class="body" role="main">
             
   <section id="singularity">
-<h1><span class="section-number">3. </span>Procedure for using Singularity<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
+<h1><span class="section-number">4. </span>Procedure for using Singularity<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
 <p>In order to use the application with Singularity, you need to acquire or create the necessary images. Here, we will follow the flow of creating an image by the user.</p>
 <p>There are three main ways to create an image.</p>
 <ol class="arabic simple">
@@ -45,7 +46,7 @@
 <p>Singularity has two ways to create an image using a definition file, one is to use the local environment and the other is to use a cloud service. This document is limited to a description how to do it on local environment, such as FUGAKU or other ARM environment.</p>
 <p>Singularity allows you to reuse existing container images to create your own. You can use not only Singularity images, but also Docker, OS yum/apt repositories, etc. In most cases, you will be making changes based on some base image. In this document, we will use AlmaLinux and Ubuntu distributed by Docker hub, as well as the Universal Base Image (UBI) supplied by Redhat for containers as a base.</p>
 <section id="id1">
-<h2><span class="section-number">3.1. </span>FUGAKU Singularity environment<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">4.1. </span>FUGAKU Singularity environment<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
 <p>In FUGAKU, the login node is x86_64 architecture, so you need to work on the compute node to create an image for ARM architecture. First, let’s do some manual work as an interactive job to see how Singularity works. After April 2024, the previously required setting jobenv=singularity is no longer required.Check the version of singularity that you use. 4.1.2-2 as a default or 3.11-7 are available as follows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pjsub --interact -L &quot;rscunit=rscunit_ft01,rscgrp=int,node=1,elapse=0:30:00&quot;
 [INFO] PJM 0000 pjsub Job XXXXXXX submitted.
@@ -62,7 +63,7 @@ SingularityPRO version 4.1.2-2.el8
 <p>In the above example, the working time is 30 minutes. After this, working contents other than those saved in the home directory etc. may be lost.</p>
 </section>
 <section id="id2">
-<h2><span class="section-number">3.2. </span>Image creation via the command line<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">4.2. </span>Image creation via the command line<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
 <p>When retrieving from docker hub or a repository that holds images in the same format. You can do it as follows.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity pull centos_latest.sif docker://centos:latest
 INFO:    Converting OCI blobs to SIF format
@@ -114,7 +115,7 @@ $ singularity build --sandbox from_SIF ubuntu2004.sif
 <p>Next, let’s start the container using the created image.</p>
 </section>
 <section id="id3">
-<h2><span class="section-number">3.3. </span>Launching a container from an image<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">4.3. </span>Launching a container from an image<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
 <p>One of the ways to start a container is to use singularity’s shell command to start a shell inside the container. Let’s compare it with the information of the host OS.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ uname -a
 Linux c27-0200c 4.18.0-513.5.1.el8_9.aarch64 #1 SMP Fri Sep 29 05:50:39 EDT 2023 aarch64 aarch64 aarch64 GNU/Linux
@@ -215,41 +216,41 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
 
 
 
-<h3>Navigation</h3>
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Preface.html">1. Preface</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Introduction.html">2. What is Singularity?</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">3. Procedure for using Singularity</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#id1">3.1. FUGAKU Singularity environment</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id2">3.2. Image creation via the command line</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id3">3.3. Launching a container from an image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Preface.html#id2">2. 本文書について</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">3. What is Singularity?</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">4. Procedure for using Singularity</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">4.1. FUGAKU Singularity environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">4.2. Image creation via the command line</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">4.3. Launching a container from an image</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Creating.html">4. Creating an image</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Execution.html">5. Runtime options and behavior</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Submitting.html">6. Cooperation with job scheduler</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Appendix.html">7. FUGAKU specific topics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">5. Creating an image</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">6. Runtime options and behavior</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">7. Cooperation with job scheduler</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">8. FUGAKU specific topics</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="Introduction.html" title="previous chapter"><span class="section-number">2. </span>What is Singularity?</a></li>
-      <li>Next: <a href="Creating.html" title="next chapter"><span class="section-number">4. </span>Creating an image</a></li>
+      <li>Previous: <a href="Introduction.html" title="previous chapter"><span class="section-number">3. </span>What is Singularity?</a></li>
+      <li>Next: <a href="Creating.html" title="next chapter"><span class="section-number">5. </span>Creating an image</a></li>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -264,7 +265,7 @@ VERSION=&quot;20.04.2 LTS (Focal Fossa)&quot;
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.4.7.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 8.2.3.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>
