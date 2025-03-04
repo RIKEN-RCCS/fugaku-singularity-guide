@@ -5,16 +5,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>2. Singularity とは &#8212; Singularity on FUGAKU  ドキュメント</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <title>3. Singularity とは &#8212; Singularity on FUGAKU  ドキュメント</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=c033477b"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="_static/translations.js?v=91613774"></script>
+    <script src="_static/translations.js?v=4755f45a"></script>
     <link rel="index" title="索引" href="genindex.html" />
     <link rel="search" title="検索" href="search.html" />
-    <link rel="next" title="3. Singularity 利用の手順" href="GettingStarted.html" />
+    <link rel="next" title="4. Singularity 利用の手順" href="GettingStarted.html" />
     <link rel="prev" title="1. はじめに" href="Preface.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -34,7 +35,7 @@
           <div class="body" role="main">
             
   <section id="singularity">
-<h1><span class="section-number">2. </span>Singularity とは<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
+<h1><span class="section-number">3. </span>Singularity とは<a class="headerlink" href="#singularity" title="Link to this heading">¶</a></h1>
 <p>Singularity は2015年に米国 Lawrence Berkeley national Laboratory のスーパーコンピュータの利便性を高めるために開発され、オープンソースで公開されている Linux コンテナ実装です。</p>
 <p>現在 Singularity は、開発者らが立ち上げた Sylabs 社と、独立したコミュニティにより個別に開発されています。後者の無償のものは Community Edition(CE)と呼ばれ、修正 BSD License（一部 Apache License のコードを含む）で Github 上に公開されています。これに対し、CE をベースに十分に検証された機能を搭載し、セキュリティ対応やバグフィックスのバックポート等の有償サービスを、主要な開発を行っている Sylabs 社が提供する Singularity PRO があります。「富岳」ではセキュリティおよびサポートの観点から、Singularity PRO を採用しています。</p>
 <p>Singularity を使うと、アプリケーションの実行に必要なシステム要件のうち、カーネル以外の部分を独立に構成・保持でき、アプリケーションと一体とできるため、同一アーキテクチャの環境であれば、実行環境をまるごと持ち運ぶことができるようになります。</p>
@@ -47,7 +48,7 @@
 <li><p>イメージ作成やコンテナ実行に際して、root 権限やデーモンを一切介在させないため、セキュアな運用が可能。</p></li>
 </ol>
 <section id="id1">
-<h2><span class="section-number">2.1. </span>コンテナ<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">3.1. </span>コンテナ<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
 <p>コンテナとは仮想化技術の一つです。完全仮想化がハードウエアのエミュレータの上で OS まるごとをインストールおよび動作させるのに対し、コンテナはホスト側のカーネルを共有し、ユーザー環境のみを切り替えて使う方式です。そのため、</p>
 <ol class="arabic simple">
 <li><p>起動済みのカーネル上で動くため、完全仮想化のように OS を起動する必要がなく、起動が高速でオーバーヘッドが少ない。</p></li>
@@ -60,13 +61,13 @@
 <p>コンテナの中身は既存の OS の環境と変わりません。そのため、異なるアーキテクチャのアプリケーションを持ち込むことはできません。ARM で作成されたイメージを x86_64 の環境で動かしたり、その逆はできません。また、カーネルはホスト側の物を利用するため、カーネルのバージョンに強く依存したり、追加でドライバーの導入を求められるようなアプリケーションの稼働はできない可能性があります。</p>
 </section>
 <section id="id2">
-<h2><span class="section-number">2.2. </span>イメージ<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">3.2. </span>イメージ<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
 <p>コンテナのイメージを作成するには、空のファイルシステムの中にホスト側とは別のOS環境を展開し、必要なランタイムとアプリケーションの環境を構築します。そうしてできたファイルシステムを、個別にファイルとして保存したりネットワーク上のリポジトリから取得できるようにします。</p>
 <p>Singularity のイメージは SIF（Singularity Image Format）と呼ばれる形式の単一ファイルで構成されます。そのため、ユーザーはアプリケーションがランタイムごとインストールされたイメージを1ファイルで持つことができ、保存や転送などのハンドリングが直感的で容易です。</p>
 <p>一方で、Singularity はイメージを SIF 形式で作成することが必須というわけではありません。他の形式で保存されたコンテナイメージを直接実行させることもできます。</p>
 </section>
 <section id="id3">
-<h2><span class="section-number">2.3. </span>実行<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">3.3. </span>実行<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
 <p>基本的にコンテナの起動とは、イメージを展開してマウントし、アプリケーションの実行環境を整えるまでを指し、その中でアプリケーションを起動することとは別の意味合いを持ちます。しかし Singularity は、コンテナの起動とアプリケーションの起動を統合してしまい、コンテナを使っていることを意識せず、まるでスタティックリンクされたバイナリを扱うかのように実行することができます。</p>
 <p>Singluarity を用いてコンテナ内でアプリケーションを実行する方法には、以下があります。</p>
 <ol class="arabic simple">
@@ -95,20 +96,30 @@
 
 
 
-<h3>ナビゲーション</h3>
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="検索" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>ナビゲーション</h3>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Preface.html">1. はじめに</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Singularity とは</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#id1">2.1. コンテナ</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id2">2.2. イメージ</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id3">2.3. 実行</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Preface.html#id2">2. 本文書について</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">3. Singularity とは</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">3.1. コンテナ</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id2">3.2. イメージ</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">3.3. 実行</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">3. Singularity 利用の手順</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Creating.html">4. イメージの作成</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Execution.html">5. 実行時オプションと挙動</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Submitting.html">6. ジョブスケジューラとの連携</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Appendix.html">7. 「富岳」特有の問題</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">4. Singularity 利用の手順</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">5. イメージの作成</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">6. 実行時オプションと挙動</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">7. ジョブスケジューラとの連携</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">8. 「富岳」特有の問題</a></li>
 </ul>
 
 <div class="relations">
@@ -116,20 +127,10 @@
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="Preface.html" title="前の章へ"><span class="section-number">1. </span>はじめに</a></li>
-      <li>Next: <a href="GettingStarted.html" title="次の章へ"><span class="section-number">3. </span>Singularity 利用の手順</a></li>
+      <li>Next: <a href="GettingStarted.html" title="次の章へ"><span class="section-number">4. </span>Singularity 利用の手順</a></li>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">クイック検索</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="検索" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -144,7 +145,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.4.7.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 8.2.3.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

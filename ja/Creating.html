@@ -5,17 +5,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>4. イメージの作成 &#8212; Singularity on FUGAKU  ドキュメント</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <title>5. イメージの作成 &#8212; Singularity on FUGAKU  ドキュメント</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=c033477b"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="_static/translations.js?v=91613774"></script>
+    <script src="_static/translations.js?v=4755f45a"></script>
     <link rel="index" title="索引" href="genindex.html" />
     <link rel="search" title="検索" href="search.html" />
-    <link rel="next" title="5. 実行時オプションと挙動" href="Execution.html" />
-    <link rel="prev" title="3. Singularity 利用の手順" href="GettingStarted.html" />
+    <link rel="next" title="6. 実行時オプションと挙動" href="Execution.html" />
+    <link rel="prev" title="4. Singularity 利用の手順" href="GettingStarted.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -34,13 +35,13 @@
           <div class="body" role="main">
             
   <section id="creating">
-<span id="id1"></span><h1><span class="section-number">4. </span>イメージの作成<a class="headerlink" href="#creating" title="Link to this heading">¶</a></h1>
+<span id="id1"></span><h1><span class="section-number">5. </span>イメージの作成<a class="headerlink" href="#creating" title="Link to this heading">¶</a></h1>
 <p>実行用の SIF イメージを作成する方法を解説します。必要なセットアップ内容に応じて最適な方法があるので、適宜選んでください。</p>
 <section id="sandbox">
-<h2><span class="section-number">4.1. </span>sandbox を用いる方法<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.1. </span>sandbox を用いる方法<a class="headerlink" href="#sandbox" title="Link to this heading">¶</a></h2>
 <p>sandbox イメージを直接編集してシステムを構築する場合、実際の作業自体は手作業となるため、簡易なイメージ作成や修正には便利ですが、作業履歴が残らないなどの問題があります。</p>
 <section id="id2">
-<h3><span class="section-number">4.1.1. </span>コンテナを起動する必要がない場合<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">5.1.1. </span>コンテナを起動する必要がない場合<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
 <p>既に前節に書いた通り、sandbox の中にはユーザーがファイルなどを持ち込んだり、設定等を編集しておけばそれを SIF イメージへ固めることができます。これは既に出来上がっているアプリケーションやリファレンスとなるデータ等を展開すれば良いだけの場合には便利です。作業手順のイメージは以下のようになるでしょう。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity build --sandbox ubi_py38 docker://registry.access.redhat.com/ubi8/python-38
 $ tar xvzf ~/application.tar.gz -C ubi_py38
@@ -67,7 +68,7 @@ $ singularity exec appl.sif /usr/local/bin/application
 <p>このように出来上がったファイルを取り込むだけで環境構築ができるものであれば、非常に簡単にイメージ作成は完了します。</p>
 </section>
 <section id="id3">
-<h3><span class="section-number">4.1.2. </span>コンテナを起動してシステムを変更する場合<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">5.1.2. </span>コンテナを起動してシステムを変更する場合<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <p>sandbox 内で本来 root がオーナーとなるファイルやディレクトリが全てユーザーがオーナーとなっていました。--writable オプションをつけてコンテナを起動すると、ファイルのオーナーは同じ状態で起動し、システムファイルもユーザー権限で編集できます。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity shell --writable ubuntu2004
 Singularity&gt; touch /hogefuga
@@ -134,7 +135,7 @@ $ singularity build ~/from-sandbox.sif /worktmp/ubuntu-sandbox
 </section>
 </section>
 <section id="id4">
-<h2><span class="section-number">4.2. </span>定義ファイルによるカスタムイメージ<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.2. </span>定義ファイルによるカスタムイメージ<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
 <p>Singularity のイメージ作成は定義ファイルに全てを記載しておくことができます。ベースイメージの取得先、ファイルの持ち込み、コンテナの中で行うシステムセットアップ、実行環境の定義などです。特に実行環境の設定をうまく使うと、コンテナの利用の際の利便性を大幅に高めることができます。</p>
 <p>定義ファイルは以前はレシピファイルと呼ばれていたことがあり呼び方が定まっていませんが、今は公式には Definition File となっており、拡張子に def を使っています。ここでは簡単な使い方に留めますので、詳細については公式ドキュメントを参照してください。</p>
 <p>定義ファイルはヘッダー、構築、実行環境定義、説明、の4つの部分からなります。ただし、最低限ヘッダーだけあれば動作します。</p>
@@ -182,7 +183,7 @@ $ singularity build --fakeroot ~/from_def.sif example.def
 <p>処理内容により所要時間は様々ですが、from_def.sif が出来上がるはずです。もし $TMPDIR を変更できない場合、$SINGULARITY_TMPDIR を設定することで Singularity のイメージ展開先だけを指定することができます。</p>
 </section>
 <section id="id5">
-<h2><span class="section-number">4.3. </span>実行環境の埋め込み<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.3. </span>実行環境の埋め込み<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
 <p>出来上がったイメージの定義ファイルには %runscript に python $* の記述があります。これはコンテナ起動と同時に、渡されたオプションを付加して python を起動していることになります。つまり、以下の二つはどちらも同じ事をしています。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec from_def.sif python hoge.py 1024
 $ ./from_def.sif hoge.py 1024
@@ -192,7 +193,7 @@ $ ./from_def.sif hoge.py 1024
 <p>このほかにも複数のアプリケーションを同梱して使い分けるための %app や、簡単な説明を記述する %help などがあります。詳細はドキュメントを参照してください。この定義ファイルをリポジトリで管理しておけば、どのように作られたイメージを使って計算を行ったのかが明確になり、再度同じ環境を作る場合でも再現が容易です。ただし、最初のイメージの作成の際、From: として latest のようなタグを用いると、イメージを作成するたびに内容が変わることになります。ご注意ください。</p>
 </section>
 <section id="id6">
-<h2><span class="section-number">4.4. </span>ジョブ投入によるイメージの作成<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.4. </span>ジョブ投入によるイメージの作成<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
 <p>これらの作業を「富岳」へのジョブとして投入してみましょう。以下のような簡単なスクリプトを作成し,ジョブ投入します。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat job.sh
 #!/bin/bash
@@ -207,7 +208,7 @@ $ pjsub -L &quot;rscunit=rscunit_ft01,rscgrp=small,node=1,elapse=0:15:00&quot; .
 <p>同様にイメージが作成できます。</p>
 </section>
 <section id="tcsds">
-<h2><span class="section-number">4.5. </span>コンテナへの TCSDS の取り込み<a class="headerlink" href="#tcsds" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.5. </span>コンテナへの TCSDS の取り込み<a class="headerlink" href="#tcsds" title="Link to this heading">¶</a></h2>
 <p>「富岳」では独自リポジトリが用意され、言語環境やライブラリが用意されています。そこからパッケージを取得してインストールすることで、特定バージョンのランタイムをコンテナイメージに埋め込んでおくことができます。現時点では rpm ファイルのみが用意されているため、Ubuntu など Debian 系の OS へはインストールができませんので、RHEL やその派生である UBI 等へのインストール方法を示します。ここでは簡単のために UBI を題材にしますが、UBI は開発系のパッケージ等が限定的にしか供給されていないため、実際には使いにくいと思われますのでご注意ください。</p>
 <p>TCSDS の置かれているリポジトリは /home/apps/singularity/tcs/ になりますが、ドキュメント類も含まれておりますので必要に応じて参照してください。ただし、コンテナに取り込むには /home 以下にあると都合が悪いため、一工夫します。まず、以下のようなリポジトリファイルを用意してください。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat tcs.repo
@@ -331,11 +332,11 @@ $ singularity build -f -B /home/apps/singularity:/opt/repo ubi_tcs.sif direct_bu
 </div>
 </section>
 <section id="id7">
-<h2><span class="section-number">4.6. </span>電子署名によるイメージ管理<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">5.6. </span>電子署名によるイメージ管理<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
 <p>Singularity の SIF イメージは１ファイルで管理されるため、ファイル名を変えられてしまえば、そのイメージが誰がどのように作ったものかトレースできなくなります。これは管理上の問題だけでなくセキュリティの問題を引き起こす恐れがあります。そこでイメージに作成者による電子署名をつけることで、イメージの改変や入れ替えを防止できます。</p>
 <p>電子署名は公開鍵の仕組みを使います。まずイメージのハッシュ値を計算し、秘密鍵で暗号化してイメージに追加（署名）します。同時に公開鍵をイメージとは別に安全な手段で管理します。イメージを受け取ったユーザーは、それが作成者が作ったものと同一かどうかを確認するため、イメージのハッシュ値を計算すると共に、署名の暗号を作成者の公開鍵で復号して比較します。</p>
 <section id="id8">
-<h3><span class="section-number">4.6.1. </span>キーペアの作成<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">5.6.1. </span>キーペアの作成<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
 <p>まず、秘密鍵と公開鍵の組み合わせ(キーペア)を作成します。key コマンドを使います。途中キーストアへプッシュするかどうかを聞かれますが、ここでは n としておいてください。もし Y としてもキーペア自体はできあがっています。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity key newpair
 Enter your name (e.g., John Doe) : Fugaku Tarou
@@ -371,7 +372,7 @@ $ ls -l ~/.singularity/sypgp
 <p>実際にこれを用いてイメージに署名（サイン）し、検証（ベリファイ）してみます。</p>
 </section>
 <section id="id9">
-<h3><span class="section-number">4.6.2. </span>署名と検証の方法<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">5.6.2. </span>署名と検証の方法<a class="headerlink" href="#id9" title="Link to this heading">¶</a></h3>
 <p>singularity による署名は sign コマンドを用います。SIF イメージだけが対象となります。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity sign ubuntu2004.sif
 Enter key passphrase :
@@ -420,44 +421,44 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
 
 
 
-<h3>ナビゲーション</h3>
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="検索" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>ナビゲーション</h3>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Preface.html">1. はじめに</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Introduction.html">2. Singularity とは</a></li>
-<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">3. Singularity 利用の手順</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">4. イメージの作成</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#sandbox">4.1. sandbox を用いる方法</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id4">4.2. 定義ファイルによるカスタムイメージ</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id5">4.3. 実行環境の埋め込み</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id6">4.4. ジョブ投入によるイメージの作成</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#tcsds">4.5. コンテナへの TCSDS の取り込み</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id7">4.6. 電子署名によるイメージ管理</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Preface.html#id2">2. 本文書について</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">3. Singularity とは</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">4. Singularity 利用の手順</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">5. イメージの作成</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sandbox">5.1. sandbox を用いる方法</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">5.2. 定義ファイルによるカスタムイメージ</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">5.3. 実行環境の埋め込み</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id6">5.4. ジョブ投入によるイメージの作成</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#tcsds">5.5. コンテナへの TCSDS の取り込み</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id7">5.6. 電子署名によるイメージ管理</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Execution.html">5. 実行時オプションと挙動</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Submitting.html">6. ジョブスケジューラとの連携</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Appendix.html">7. 「富岳」特有の問題</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">6. 実行時オプションと挙動</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">7. ジョブスケジューラとの連携</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">8. 「富岳」特有の問題</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="GettingStarted.html" title="前の章へ"><span class="section-number">3. </span>Singularity 利用の手順</a></li>
-      <li>Next: <a href="Execution.html" title="次の章へ"><span class="section-number">5. </span>実行時オプションと挙動</a></li>
+      <li>Previous: <a href="GettingStarted.html" title="前の章へ"><span class="section-number">4. </span>Singularity 利用の手順</a></li>
+      <li>Next: <a href="Execution.html" title="次の章へ"><span class="section-number">6. </span>実行時オプションと挙動</a></li>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">クイック検索</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="検索" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -472,7 +473,7 @@ Key with fingerprint B70ADXXXXFB3CEZZZZ67F0A304YYYYY122B0WWWWW successfully adde
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.4.7.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 8.2.3.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

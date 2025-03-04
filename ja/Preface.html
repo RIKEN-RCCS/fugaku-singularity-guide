@@ -6,15 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <title>1. はじめに &#8212; Singularity on FUGAKU  ドキュメント</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=c033477b"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="_static/translations.js?v=91613774"></script>
+    <script src="_static/translations.js?v=4755f45a"></script>
     <link rel="index" title="索引" href="genindex.html" />
     <link rel="search" title="検索" href="search.html" />
-    <link rel="next" title="2. Singularity とは" href="Introduction.html" />
+    <link rel="next" title="3. Singularity とは" href="Introduction.html" />
     <link rel="prev" title="「富岳」における SingularityPRO 利用法" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -38,6 +39,10 @@
 <p>本文書は HPC 向けコンテナである Singularity を「富岳」環境で利用するための一連の動作について解説したものです。Singularity を初めて使う場合でも理解できるよう記述したため、Singularity 自体について既に知識がある方にとっては冗長に過ぎるきらいがあります。「富岳」環境で利用するにあたっての注意点や他環境との違い、制約と対処方法のみ確認したい方は、それらを <a class="reference internal" href="Appendix.html#fugaku-specific"><span class="std std-ref">「富岳」特有の問題</span></a> に集約しましたので、こちらに進んでください。</p>
 <p>Singularity はシステムにはないアプリケーション環境を手元に保持できるため、再現性を容易に担保できます。その他にも、圧縮されたイメージは軽量で、かつコンテナ内のファイルアクセスをオンメモリで行うことから、ホームディレクトリ内に環境をインストールするよりも圧倒的に I/O 負荷を低減する効果があります。それゆえ、アプリケーションの起動は高速になり、「富岳」の安定運用にもつながります。ぜひ利活用を進めてください。</p>
 </section>
+<section id="id2">
+<h1><span class="section-number">2. </span>本文書について<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h1>
+<p>この文書は、理化学研究所 計算科学研究センター（R-CCS）との契約に基づき Pacific Teck Japan 合同会社が作成し、著作権は R-CCS が保持します。ライセンスとしては CC BY-SA 4.0(<a class="reference external" href="https://creativecommons.org/licenses/by-sa/4.0/legalcode">https://creativecommons.org/licenses/by-sa/4.0/legalcode</a>) にて公開されています。</p>
+</section>
 
 
           </div>
@@ -55,15 +60,25 @@
 
 
 
-<h3>ナビゲーション</h3>
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="検索" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>ナビゲーション</h3>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">1. はじめに</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Introduction.html">2. Singularity とは</a></li>
-<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">3. Singularity 利用の手順</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Creating.html">4. イメージの作成</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Execution.html">5. 実行時オプションと挙動</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Submitting.html">6. ジョブスケジューラとの連携</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Appendix.html">7. 「富岳」特有の問題</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#id2">2. 本文書について</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">3. Singularity とは</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">4. Singularity 利用の手順</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">5. イメージの作成</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Execution.html">6. 実行時オプションと挙動</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">7. ジョブスケジューラとの連携</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">8. 「富岳」特有の問題</a></li>
 </ul>
 
 <div class="relations">
@@ -71,20 +86,10 @@
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="index.html" title="前の章へ">「富岳」における SingularityPRO 利用法</a></li>
-      <li>Next: <a href="Introduction.html" title="次の章へ"><span class="section-number">2. </span>Singularity とは</a></li>
+      <li>Next: <a href="Introduction.html" title="次の章へ"><span class="section-number">3. </span>Singularity とは</a></li>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">クイック検索</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="検索" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -99,7 +104,7 @@
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.4.7.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 8.2.3.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>

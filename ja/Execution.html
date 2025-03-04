@@ -5,17 +5,18 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>5. 実行時オプションと挙動 &#8212; Singularity on FUGAKU  ドキュメント</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=12dfc556" />
+    <title>6. 実行時オプションと挙動 &#8212; Singularity on FUGAKU  ドキュメント</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
     <script src="_static/documentation_options.js?v=c033477b"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="_static/translations.js?v=91613774"></script>
+    <script src="_static/translations.js?v=4755f45a"></script>
     <link rel="index" title="索引" href="genindex.html" />
     <link rel="search" title="検索" href="search.html" />
-    <link rel="next" title="6. ジョブスケジューラとの連携" href="Submitting.html" />
-    <link rel="prev" title="4. イメージの作成" href="Creating.html" />
+    <link rel="next" title="7. ジョブスケジューラとの連携" href="Submitting.html" />
+    <link rel="prev" title="5. イメージの作成" href="Creating.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -34,12 +35,12 @@
           <div class="body" role="main">
             
   <section id="id1">
-<h1><span class="section-number">5. </span>実行時オプションと挙動<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
+<h1><span class="section-number">6. </span>実行時オプションと挙動<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
 <p>ここでは、Singularity の実行時によく用いられるオプションや、いくつかの便利な挙動等について紹介します。</p>
 <section id="id2">
-<h2><span class="section-number">5.1. </span>ホスト側の環境の取り込み<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.1. </span>ホスト側の環境の取り込み<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
 <section id="id3">
-<h3><span class="section-number">5.1.1. </span>環境変数の取り扱い<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">6.1.1. </span>環境変数の取り扱い<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <p>これまでにホームディレクトリにあるファイルへのアクセスはデフォルトで有効であることを見てきました。環境変数についてはどうでしょうか。以下のようにしてコンテナ内の環境変数を表示させると、実行時のホスト側の変数が引き継がれていることが分かります。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif env
 </pre></div>
@@ -72,7 +73,7 @@ $ cat job.sh
 <p>これにより、異なる環境においてもイメージの再作成をすることなく条件を変更したりすることが容易になっています。</p>
 </section>
 <section id="id4">
-<h3><span class="section-number">5.1.2. </span>ディレクトリのバインド<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">6.1.2. </span>ディレクトリのバインド<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h3>
 <p>Singularity のコンテナを起動すると、デフォルトで自身のホームディレクトリ、/tmp, /var/tmp, /dev/, /proc, /sys 等をコンテナ内にバインドします。また、起動時のカレントディレクトリもバインドされますが、コンテナ内に同名のディレクトリが存在する場合に限られます。コンテナ内に存在しないディレクトリからイメージを起動すると、カレントディレクトリは当然、それ以外のディレクトリをコンテナ内からアクセスしたい場合があります。例えばホスト側で既にインストール済みのアプリケーションやデータが、イメージに取り込むには冗長・巨大であったり、ファイルを共有する他のユーザーのホームディレクトリを利用したい等です。</p>
 <p>この場合、起動時に -B オプションを用いて追加でバインドするディレクトリを指定できます。ホスト側のディレクトリとコンテナ内でのマウントポイントを : で区切って指定して、異なるパスを指定することもできますが、マウント先を省略すると同名のディレクトリにバインドされます。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec ubuntu2004.sif -B /worktmp:/scratch ls -al /scratch
@@ -87,7 +88,7 @@ $ cat job.sh
 </section>
 </section>
 <section id="id5">
-<h2><span class="section-number">5.2. </span>インスタンス化とインタラクティブ処理<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.2. </span>インスタンス化とインタラクティブ処理<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
 <p>これまではコンテナの起動とアプリケーションの起動を統合し、ユーザーがコンテナを意識することなく直接アプリケーションを起動するように使ってきました。しかし、この使い方では起動したアプリケーションが終了するとコンテナも同時に終了してしまいます。もちろん再度起動し直せばよいのですが、軽量なコンテナ実装であっても何度も繰り返せばオーバーヘッド分が無駄になります。また、ウェブサーバーのようなサービス運用には Singularity は使えないのでしょうか？こうした利用法に対応するため、Singularity にはコンテナを維持できるインスタンス化という機能があります。</p>
 <p>以下のようにコンテナのみを起動しインスタンス化します。最後の文字列はインスタンス名で、既に起動しているものと被らない名前を付ける必要があります。list サブコマンドで正しく起動されていることを確認してください。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity instance start ubuntu2004.sif Focal
@@ -122,7 +123,7 @@ done
 </div>
 </section>
 <section id="id6">
-<h2><span class="section-number">5.3. </span>リポジトリを指定した直接実行<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.3. </span>リポジトリを指定した直接実行<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
 <p>SIF イメージの作成時に Docker イメージを取得していたのを思い出してください。pull や build 時には、Docker イメージを構成するレイヤーファイル群は ~/.singularity 以下にキャッシュされます。このキャッシュの動作はターゲットに oras や library を指定した場合でも変わりません。そして Singularity はこれを直接実行できます。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec docker://ubuntu:latest head -n 5 /etc/os-release
 INFO:    Converting OCI blobs to SIF format
@@ -173,7 +174,7 @@ $ singularity cache clean
 <p>これらのキャッシュは、ここで触れている実行時だけでなく build/pull の際にも利用されます。</p>
 </section>
 <section id="overlay">
-<h2><span class="section-number">5.4. </span>Overlay 機能について<a class="headerlink" href="#overlay" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.4. </span>Overlay 機能について<a class="headerlink" href="#overlay" title="Link to this heading">¶</a></h2>
 <p>SIF イメージの実体は SquashFS(tar+gzip)なので、実行時はリードオンリーとなります。しかし、一時的にファイルをイメージ内に置きたい場合や、部分的に異なっているだけのイメージが必要な時、全てを含んだイメージを複数持つのは無駄なので差分だけ持ちたいといったケースがあります。これには Linux カーネルの持つ OverlayFS という機能を使い、複数のファイルシステムを重ね合わせる事で実現します。Singularity には二つの方法が用意されています。</p>
 <ol class="arabic simple">
 <li><p>一時的な書き込み可能領域を使う --writable-tmpfs オプション。文字通りメモリ由来の tmpfs を重ね合わせます。</p></li>
@@ -239,10 +240,10 @@ $ singularity sif del 4 ubuarm20.sif
 <p>そしてこれらの操作はログインノード上でも行うことができるので、このためにジョブを投入する必要はありません。Overlay は SIF 同様、1ファイル内に I/O が閉じるため、特に小サイズのファイルが多数ある場合には、共有ファイルシステムのメタデータアクセス負荷の軽減に寄与します。積極的にご利用ください。</p>
 </section>
 <section id="mpi">
-<h2><span class="section-number">5.5. </span>MPI 並列について<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
+<h2><span class="section-number">6.5. </span>MPI 並列について<a class="headerlink" href="#mpi" title="Link to this heading">¶</a></h2>
 <p>MPI 並列については、ノード内での並列までは大きな問題がありませんが、マルチノード並列では解決すべき問題が多岐に渡るため、イメージの作成と実行時に追加で作業や設定が必要です。</p>
 <section id="id7">
-<h3><span class="section-number">5.5.1. </span>ノード内並列<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">6.5.1. </span>ノード内並列<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h3>
 <p>ノード内並列ではプロセスマネージャが直接アプリケーションを起動するため、コンテナ外へ処理が及ぶことがありません。Singularity によりコンテナを起動した中で、mpirun(mpiexec) 等で MPI アプリケーションを起動します。当然ながら必要な MPI ランタイムがコンテナ内に存在することが前提となります。コマンドの例は以下のようになります。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ singularity exec mpi-apps.sif mpiexec -np 8 ~/myapps/hoge inputfile
 </pre></div>
@@ -250,7 +251,7 @@ $ singularity sif del 4 ubuarm20.sif
 <p>起動されるコンテナは一つだけで、その中で複数のプロセスが動きます。</p>
 </section>
 <section id="id8">
-<h3><span class="section-number">5.5.2. </span>マルチノード並列の概要<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
+<h3><span class="section-number">6.5.2. </span>マルチノード並列の概要<a class="headerlink" href="#id8" title="Link to this heading">¶</a></h3>
 <p>マルチノード並列でノード内での並列と同様に起動すると、他のノード上でのプロセスマネージャの起動は ssh や PMI により行われます。しかしその先はコンテナ環境が立ち上がっているわけではないため、アプリケーションの起動に失敗します。そのため、MPI のプロセスマネージャにコンテナ起動を含めてやらせてしまうことでこれに対処します。起動の仕方のイメージは以下のようになります。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mpiexec -np 32 --machinefile nodefile singularity exec mpi-apps.sif ~/myapps/hoge inputfile
 </pre></div>
@@ -259,7 +260,7 @@ $ singularity sif del 4 ubuarm20.sif
 <p>さらに、RDMA 通信に用いられるインターコネクタの対応が必要です。Singularity では /dev がホスト側と共有されるので、デバイスそのものが見えないことはありません。しかし、デバイスを利用するのに必要なソフトウエアスタックやソケットについてはコンテナ内に用意する必要があります。また、スケジューラによりジョブに割り当てられたノードの情報等を環境変数から取得し、実際の MPI に渡すことでようやくマルチノードの MPI 並列が実現します。</p>
 </section>
 <section id="multinode-parallel">
-<span id="id9"></span><h3><span class="section-number">5.5.3. </span>「富岳」環境でのマルチノード並列<a class="headerlink" href="#multinode-parallel" title="Link to this heading">¶</a></h3>
+<span id="id9"></span><h3><span class="section-number">6.5.3. </span>「富岳」環境でのマルチノード並列<a class="headerlink" href="#multinode-parallel" title="Link to this heading">¶</a></h3>
 <p>富士通による TCS に含まれる MPI を取り込んだイメージを作成し、実行する際に必要な方法は次のようになります。イメージ作成の章ではマウントされている領域にあるディレクトリから TCSDS をインストールしましたが、ネットワークアクセスのできるリポジトリも用意されたため、こちらを利用します。 定義ファイルのうち、実行環境を準備する部分だけを記述すると、以下のようになります。</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Bootstrap</span><span class="p">:</span> <span class="n">docker</span>
 <span class="n">From</span><span class="p">:</span> <span class="n">redhat</span><span class="o">/</span><span class="n">ubi8</span><span class="p">:</span><span class="mf">8.9</span>
@@ -350,43 +351,43 @@ Hello world from processor f34-0000c, rank 1 out of 2 processors
 
 
 
-<h3>ナビゲーション</h3>
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="検索" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>ナビゲーション</h3>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="Preface.html">1. はじめに</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Introduction.html">2. Singularity とは</a></li>
-<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">3. Singularity 利用の手順</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Creating.html">4. イメージの作成</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">5. 実行時オプションと挙動</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#id2">5.1. ホスト側の環境の取り込み</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id5">5.2. インスタンス化とインタラクティブ処理</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id6">5.3. リポジトリを指定した直接実行</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#overlay">5.4. Overlay 機能について</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#mpi">5.5. MPI 並列について</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Preface.html#id2">2. 本文書について</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Introduction.html">3. Singularity とは</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">4. Singularity 利用の手順</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Creating.html">5. イメージの作成</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">6. 実行時オプションと挙動</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id2">6.1. ホスト側の環境の取り込み</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">6.2. インスタンス化とインタラクティブ処理</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id6">6.3. リポジトリを指定した直接実行</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#overlay">6.4. Overlay 機能について</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mpi">6.5. MPI 並列について</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Submitting.html">6. ジョブスケジューラとの連携</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Appendix.html">7. 「富岳」特有の問題</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Submitting.html">7. ジョブスケジューラとの連携</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Appendix.html">8. 「富岳」特有の問題</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="Creating.html" title="前の章へ"><span class="section-number">4. </span>イメージの作成</a></li>
-      <li>Next: <a href="Submitting.html" title="次の章へ"><span class="section-number">6. </span>ジョブスケジューラとの連携</a></li>
+      <li>Previous: <a href="Creating.html" title="前の章へ"><span class="section-number">5. </span>イメージの作成</a></li>
+      <li>Next: <a href="Submitting.html" title="次の章へ"><span class="section-number">7. </span>ジョブスケジューラとの連携</a></li>
   </ul></li>
 </ul>
 </div>
-<search id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">クイック検索</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="検索" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script>
 
 
 
@@ -401,7 +402,7 @@ Hello world from processor f34-0000c, rank 1 out of 2 processors
     </div>
     <div class="footer" role="contentinfo">
         &#169; Copyright 2021-, RIKEN R-CCS.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 7.4.7.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 8.2.3.
     &nbsp;&nbsp;<a href="https://www.fugaku.r-ccs.riken.jp/">Fugaku Potal Top</a>
     </div>
   </body>
